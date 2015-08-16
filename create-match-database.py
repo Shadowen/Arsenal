@@ -37,7 +37,11 @@ try:
 	        kills INTEGER,
 	        deaths INTEGER,
 	        assists INTEGER,
-	        assassinations INTEGER
+	        assassinations INTEGER,
+	        damageDealt INTEGER,
+	        damageDealtToChampions INTEGER,
+	        magicDamageDealt INTEGER,
+	        magicDamageDealtToChampions INTEGER
         )''')
     c.execute('''CREATE TABLE participantMastery (
 	    	matchId INTEGER,
