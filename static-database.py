@@ -13,7 +13,7 @@ c = conn.cursor()
 # Items
 try:
     c.execute(
-        'CREATE TABLE item (id int PRIMARY KEY, name text, flat_ap int, percent_ap real, gold int)')
+        'CREATE TABLE item (id INTEGER PRIMARY KEY, name text, flat_ap INTEGER, percent_ap REAL, gold INTEGER)')
     r = http.request(
         'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/item?version=5.11.1&itemListData=gold,image,stats&api_key=f84bdaf1-2720-4743-90b6-45576a21a5f5')
     responseData = json.loads(r.data.decode("utf-8"))
@@ -28,7 +28,7 @@ except Exception:
 # Runes
 try:
     c.execute(
-        'CREATE TABLE rune (id int PRIMARY KEY, name text, flat_ap int, percent_ap real)')
+        'CREATE TABLE rune (id INTEGER PRIMARY KEY, name text, flat_ap INTEGER, percent_ap REAL)')
     r = http.request(
         'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/rune?version=5.11.1&runeListData=stats&api_key=f84bdaf1-2720-4743-90b6-45576a21a5f5')
     responseData = json.loads(r.data.decode("utf-8"))
@@ -43,7 +43,7 @@ except Exception:
 # Masteries
 try:
     c.execute(
-        'CREATE TABLE mastery (id int, name text, rank int, flat_ap int, percent_ap real)')
+        'CREATE TABLE mastery (id INTEGER, name text, rank INTEGER, flat_ap INTEGER, percent_ap REAL)')
     c.execute('INSERT INTO mastery (id, name, rank, flat_ap, percent_ap) VALUES (?, ?, ?, ?, ?)',
               (4123, 'Mental Force', 1, 6, 0))
     c.execute('INSERT INTO mastery (id, name, rank, flat_ap, percent_ap) VALUES (?, ?, ?, ?, ?)',

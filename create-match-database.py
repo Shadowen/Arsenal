@@ -5,94 +5,105 @@ conn = sqlite3.connect('database.db')
 c = conn.cursor()
 try:
     c.execute('''CREATE TABLE match (
-            id INT PRIMARY KEY,
-            version TEXT NOT NULL,
-            duration TEXT
-            )''')
-    c.execute('''CREATE TABLE frame (
-            matchId INT REFERENCES match(id),
-            timestamp INT,
-            participantId INT REFERENCES participant(id),
-            positionX INT,
-            positionY INT,
-            currentGold INT,
-            totalGold INT,
-            level INT,
-            minionsKilled INT,
-            jungleMinionsKilled INT,
-            PRIMARY KEY (matchId, timestamp)
-            )''')
-    c.execute('''CREATE TABLE event (
-            matchId INT REFERENCES match(id),
-            timestamp INT NOT NULL,
-            id INT PRIMARY KEY AUTOINCREMENT,
-            type TEXT,
-            item INT REFERENCES item(itemId),
-            participant INT,
-            creatorId INT,
-            killerId INT,
-            victimId INT,
-            positionX INT,
-            positionY INT
-            )''')
-    c.execute('''CREATE TABLE assist (
-            match INT,
-            event INT,
-            participantId INT,
-            FOREIGN KEY (matchId, eventId) REFERENCES event(matchId, id)
-            )''')
+			id INTEGER PRIMARY KEY,
+			region TEXT,
+			queueType TEXT,
+			version TEXT NOT NULL,
+			duration TEXT
+			)''')
+    c.execute('''CREATE TABLE team (
+		    matchId INTEGER REFERENCES match(id),
+		    id INTEGER,
+		    winner INTEGER NOT NULL,
+		    PRIMARY KEY (matchId, id)
+		    )''')
+    c.execute('''CREATE TABLE ban (
+			matchId INTEGER,
+			teamId INTEGER,
+			championId INTEGER,
+			pickTurn INTEGER,
+			FOREIGN KEY (matchId, teamId) REFERENCES team(matchId, id)
+			)''')
     c.execute('''CREATE TABLE participant (
-	        matchId INT REFERENCES match(id),
-	        playerId INT REFERENCES player(id),
-	        id INT NOT NULL,
-	        team INT REFERENCES team(id),
-	        championId INT,
-	        champLevel INT,
+	        matchId INTEGER REFERENCES match(id),
+	        playerId INTEGER REFERENCES player(id),
+	        id INTEGER NOT NULL,
+	        teamId INTEGER REFERENCES team(id),
+	        championId INTEGER,
+	        champLevel INTEGER,
 	        role TEXT,
 	        lane TEXT,
 	        buildType TEXT,
-	        kills INT,
-	        deaths INT,
-	        assists INT
+	        kills INTEGER,
+	        deaths INTEGER,
+	        assists INTEGER,
+	        assassinations INTEGER
         )''')
     c.execute('''CREATE TABLE participantMastery (
-	    	matchId INT,
-	    	participantId INT,
-	    	masteryId INT REFERENCES mastery(id),
-	    	rank INT,
+	    	matchId INTEGER,
+	    	participantId INTEGER,
+	    	masteryId INTEGER REFERENCES mastery(id),
+	    	rank INTEGER,
 	    	FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id)
     	)''')
     c.execute('''CREATE TABLE participantRune (
-	    	matchId INT,
-	    	participantId INT,
-	    	runeId INT REFERENCES rune(id),
-	    	rank INT,
+	    	matchId INTEGER,
+	    	participantId INTEGER,
+	    	runeId INTEGER REFERENCES rune(id),
+	    	rank INTEGER,
 	    	FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id)
     	)''')
     c.execute('''CREATE TABLE participantItem (
-	    	matchId INT,
-	    	participantId INT,
-	    	itemId INT REFERENCES item(id),
-	    	timeBought INT,
-	    	orderBought INT,
-	    	goldThreshold INT,
-	    	maxStacks INT,
-	    	finalStacks INT,
+	    	matchId INTEGER,
+	    	participantId INTEGER,
+	    	itemId INTEGER REFERENCES item(id),
+	    	timeBought INTEGER,
+	    	orderBought INTEGER,
+	    	goldThreshold INTEGER,
+	    	maxStacks INTEGER,
+	    	finalStacks INTEGER,
 	    	FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, participantId))''')
-    c.execute('''CREATE TABLE team (
-	        match INT REFERENCES match(id),
-	        id INT NOT NULL,
-	        winner INT NOT NULL
-	        )''')
+    c.execute('''CREATE TABLE participantFrame (
+            matchId INTEGER REFERENCES match(id),
+            timestamp INTEGER,
+            participantId INTEGER REFERENCES participant(id),
+            positionX INTEGER,
+            positionY INTEGER,
+            currentGold INTEGER,
+            totalGold INTEGER,
+            level INTEGER,
+            minionsKilled INTEGER,
+            jungleMinionsKilled INTEGER,
+            PRIMARY KEY (matchId, timestamp)
+            )''')
+    c.execute('''CREATE TABLE event (
+            matchId INTEGER REFERENCES match(id),
+            timestamp INTEGER NOT NULL,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT,
+            itemId INTEGER REFERENCES item(itemId),
+            participantId INTEGER,
+            creatorId INTEGER,
+            killerId INTEGER,
+            victimId INTEGER,
+            positionX INTEGER,
+            positionY INTEGER
+            )''')
+    c.execute('''CREATE TABLE assist (
+            matchId INTEGER,
+            eventId INTEGER,
+            participantId INTEGER,
+            FOREIGN KEY (matchId, eventId) REFERENCES event(matchId, id)
+            )''')
 
     c.execute('''CREATE TABLE player (
-			id INT PRIMARY KEY,
+			id INTEGER PRIMARY KEY,
 			name TEXT NOT NULL,
 			matchHistoryUri TEXT,
-			profileIcon INT
+			profileIcon INTEGER
 	    	)''')
     conn.commit()
-except Exception:
+except sqlite3.Error:
     traceback.print_exc()
 
 conn.close()
