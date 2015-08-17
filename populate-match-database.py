@@ -27,7 +27,7 @@ with open('dataset/5.11/RANKED_SOLO/NA.json', 'r') as f:
 
 for (matchNum, matchId) in enumerate(matchIds):
     ## TODO
-    if matchNum == 50:
+    if matchNum == 1:
         break
     try:
         print("Loading match {}".format(matchId))
@@ -48,7 +48,7 @@ for (matchNum, matchId) in enumerate(matchIds):
             for ban in team['bans']:
                 c.execute('''INSERT INTO ban (matchId, teamId, championId, pickTurn) VALUES (?, ?, ?, ?)''',
                     (matchId, team['teamId'], ban['championId'], ban['pickTurn']))
-
+        # Participants
         for participant in data['participants']:
             participantId = participant['participantId']
             c.execute('''INSERT INTO participant (matchId, id, teamId, championId, role, lane, kills, deaths, assists, damageDealt, damageDealtToChampions,
@@ -60,17 +60,24 @@ for (matchNum, matchId) in enumerate(matchIds):
                 participant['stats']['firstBloodKill'], participant['stats']['firstBloodAssist'], participant['stats']['firstTowerKill'],
                 participant['stats']['firstTowerAssist'], participant['stats']['totalTimeCrowdControlDealt']))
             for mastery in participant.get('masteries', []):
-                c.execute('''INSERT INTO participantMastery (matchId, participantId, masteryId, rank) VALUES (?, ?, ?, ?)''', (matchId, participantId, mastery['masteryId'], mastery['rank']))
+                c.execute('''INSERT INTO participantMastery (matchId, participantId, masteryId, rank) VALUES (?, ?, ?, ?)''',
+                    (matchId, participantId, mastery['masteryId'], mastery['rank']))
             for rune in participant.get('runes', []):
-                c.execute('''INSERT INTO participantRune (matchId, participantId, runeId, rank) VALUES (?, ?, ?, ?)''', (matchId, participantId, rune['runeId'], rune['rank']))
-
+                c.execute('''INSERT INTO participantRune (matchId, participantId, runeId, rank) VALUES (?, ?, ?, ?)''',
+                    (matchId, participantId, rune['runeId'], rune['rank']))
+        # Players
         for player in data['participantIdentities']:
             participantId = player['participantId']
             summonerId = player['player']["summonerId"]
+            c.execute('''UPDATE participant SET playerId = ?
+                WHERE matchId = ? AND id = ?''', (summonerId, matchId, participantId))
+            # Add the player if we don't have him/her yet
             c.execute('''SELECT *
                 FROM player
                 WHERE id = ?''', (summonerId,))
-            print(c.fetchone())
+            if c.fetchone() is None:
+                c.execute('''INSERT INTO player (id, name, matchHistoryUri, profileIcon) VALUES (?, ?, ?, ?)''',
+                    (summonerId, player['player']['summonerName'], player['player']['matchHistoryUri'], player['player']['profileIcon']))
 
         for frame in data['timeline']['frames']:
             timestamp = frame['timestamp']
