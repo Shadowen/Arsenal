@@ -19,8 +19,9 @@ c = conn.cursor()
 with open('apikey.txt', 'r') as f:
     apiKey = f.read()
 
-# matchId = 1852538938 # Contains DCap
-# matchId = 1852559476 # Contains RoA
+# 1852538938 # Contains DCap
+# 1852559476 # Contains RoA
+# 1852563520 # Contains Mejais
 with open('dataset/5.11/RANKED_SOLO/NA.json', 'r') as f:
     matchIds = json.loads(f.read())
 

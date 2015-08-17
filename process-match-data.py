@@ -53,18 +53,18 @@ try:
 			# 	(finalStacks, maxStacks, matchId, participantId))
 	except:
 		traceback.print_exc()
-	# # Mejais
+	# Mejais
 	try:
 		class finalStacks:
 			def __init__(self):
 				self.stacks = 6
 			def step(self, participantId, killerId, victimId, assistId):
 				if participantId == killerId:
-					self.stacks += 2
+					self.stacks = min(self.stacks + 2, 20)
 				elif participantId == victimId:
 					self.stacks //= 2
 				elif participantId == assistId:
-					self.stacks += 1
+					self.stacks = min(self.stacks + 1, 20)
 				else:
 					print(participantId, killerId, victimId, assistId)
 					raise 'Error'
@@ -74,15 +74,14 @@ try:
 		class maxStacks:
 			def __init__(self):
 				self.stacks = 6
-				self.maxStacks = 6
-
+				self.maxStacks = self.stacks
 			def step(self, participantId, killerId, victimId, assistId):
 				if participantId == killerId:
-					self.stacks += 2
+					self.stacks = min(self.stacks + 2, 20)
 				elif participantId == victimId:
 					self.stacks //= 2
 				elif participantId == assistId:
-					self.stacks += 1
+					self.stacks = min(self.stacks + 1, 20)
 				else:
 					print(participantId, killerId, victimId, assistId)
 					raise 'Error'
@@ -116,19 +115,14 @@ try:
 				(event.killerId == ? OR event.victimId == ? OR assist.participantId == ?)
 				ORDER BY event.timestamp''',
 				(participantId, participantId, timeBought, participantId, participantId, participantId))
-			finalStacks, maxStacks = c.fetchall()[0]
+			finalStacks, maxStacks = c.fetchone()
+			# Update database
 			c.execute('''UPDATE participantItem
 				SET finalStacks = ?, maxStacks = ?
 				WHERE matchId = ? AND participantId = ? AND itemId = 3041''',
 				(finalStacks, maxStacks, matchId, participantId))
 	except:
 		traceback.print_exc()
-	# # Deathcap
-	# c.execute('''SELECT event.itemId, 1
-	# FROM event
-	# LEFT JOIN match ON event.matchId = match.id
-	# WHERE event.type = "ITEM_PURCHASED" AND event.itemId = 3089
-	# LIMIT 1''')
 
 	conn.commit()
 except sqlite3.Error:
