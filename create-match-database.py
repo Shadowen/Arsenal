@@ -9,7 +9,7 @@ try:
 			region TEXT,
 			queueType TEXT,
 			version TEXT NOT NULL,
-			duration TEXT
+			duration INTEGER
 			)''')
     c.execute('''CREATE TABLE team (
 		    matchId INTEGER REFERENCES match(id),
@@ -59,11 +59,13 @@ try:
     		matchId INTEGER,
     		participantId INTEGER,
     		itemId INTEGER REFERENCES item(id),
+    		timeBought INTEGER,
     		flatAp INTEGER,
     		percentAp INTEGER,
     		finalStacks INTEGER,
     		maxStacks INTEGER,
-    		FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id)
+    		FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id),
+    		FOREIGN KEY (matchId, timeBought) REFERENCES event(matchId, timestamp)
 	    	)''')
     c.execute('''CREATE TABLE participantMastery (
 	    	matchId INTEGER,
@@ -108,7 +110,7 @@ try:
     c.execute('''CREATE TABLE assist (
             matchId INTEGER,
             eventId INTEGER,
-            participantId INTEGER,
+            participantId INTEGER REFERENCES participant(id),
             FOREIGN KEY (matchId, eventId) REFERENCES event(matchId, id)
             )''')
 
@@ -123,4 +125,5 @@ except sqlite3.Error:
     traceback.print_exc()
 
 conn.close()
+print('Done!')
 input()

@@ -92,4 +92,5 @@ except Exception:
     traceback.print_exc()
 # Finalize
 conn.close()
+print('Done!')
 input()
