@@ -64,6 +64,14 @@ for (matchNum, matchId) in enumerate(matchIds):
             for rune in participant.get('runes', []):
                 c.execute('''INSERT INTO participantRune (matchId, participantId, runeId, rank) VALUES (?, ?, ?, ?)''', (matchId, participantId, rune['runeId'], rune['rank']))
 
+        for player in data['participantIdentities']:
+            participantId = player['participantId']
+            summonerId = player['player']["summonerId"]
+            c.execute('''SELECT *
+                FROM player
+                WHERE id = ?''', (summonerId,))
+            print(c.fetchone())
+
         for frame in data['timeline']['frames']:
             timestamp = frame['timestamp']
             for (participantId, participantFrame) in frame['participantFrames'].items():

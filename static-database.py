@@ -33,6 +33,8 @@ try:
     for itemId, item in responseData["data"].items():
         c.execute('''INSERT INTO item (id, name, version, flatAp, percentAp, gold) VALUES (?, ?, ?, ?, ?, ?)''', (item["id"], item["name"], version, item[
                   "stats"].get("FlatMagicDamageMod", 0), item["stats"].get("PercentMagicDamageMod", 0), item["gold"]["total"]))
+    # Deathcap pls
+    c.execute('''UPDATE item SET percentAp = 30 WHERE id = 3089''')
     conn.commit()
     print("Items table created with {} items.".format(
         len(responseData["data"])))

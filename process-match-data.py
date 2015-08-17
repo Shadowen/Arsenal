@@ -42,7 +42,8 @@ try:
 			# Calculate the final number of stacks
 			finalStacks = min(matchDuration // 60 - timeBought // 1000 // 60, 20)
 			# Update the table
-			c.execute('''UPDATE participantItem SET finalStacks = ?, maxStacks = ?
+			c.execute('''UPDATE participantItem
+				SET finalStacks = ?, maxStacks = ?
 				WHERE matchId = ? AND participantId = ? AND itemId = 3027''',
 				(finalStacks, finalStacks, matchId, participantId))
 			# Multiple of the same item bought? Need SQLITE_enable_update_delete_limit
@@ -121,6 +122,52 @@ try:
 				SET finalStacks = ?, maxStacks = ?
 				WHERE matchId = ? AND participantId = ? AND itemId = 3041''',
 				(finalStacks, maxStacks, matchId, participantId))
+	except:
+		traceback.print_exc()
+	try:
+		# Item AP
+		c.execute('''SELECT participant.matchId, participant.id, TOTAL(item.flatAp + participantItem.finalStacks * 20), MAX(item.percentAp)
+			FROM participant
+			LEFT JOIN participantItem ON participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
+			LEFT JOIN item ON participantItem.itemId = item.id
+			GROUP BY participant.matchId, participant.id''')
+		# WHERE participantItem.stacks = 0 OR participantItem.itemId = RoA OR Mejai	
+		for (matchId, participantId, totalFlatItemAp, totalPercentItemAp) in c.fetchall():
+			c.execute('''UPDATE participant
+				SET totalFlatItemAp = ?, totalPercentItemAp = ?
+				WHERE participant.matchId = ? AND participant.id = ?''',
+				(totalFlatItemAp, totalPercentItemAp, matchId, participantId))
+		# Rune AP
+		c.execute('''SELECT participant.matchId, participant.id, TOTAL(rune.flatAp), TOTAL(rune.percentAp)
+			FROM participant
+			LEFT JOIN participantRune ON participant.matchId = participantRune.matchId AND participant.id = participantRune.participantId
+			LEFT JOIN rune ON participantRune.runeId = rune.id
+			GROUP BY participant.matchId, participant.id''')
+		for (matchId, participantId, totalFlatRuneAp, totalPercentRuneAp) in c.fetchall():
+			c.execute('''UPDATE participant
+				SET totalFlatRuneAp = ?, totalPercentRuneAp = ?
+				WHERE participant.matchId = ? AND participant.id = ?''',
+				(totalFlatRuneAp, totalPercentRuneAp, matchId, participantId))
+		# Mastery AP
+		c.execute('''SELECT participant.matchId, participant.id, TOTAL(mastery.flatAp), TOTAL(mastery.percentAp)
+			FROM participant
+			LEFT JOIN participantMastery ON participant.matchId = participantMastery.matchId AND participant.id = participantMastery.participantId
+			LEFT JOIN mastery ON participantMastery.masteryId = mastery.id AND participantMastery.rank = mastery.rank
+			GROUP BY participant.matchId, participant.id''')
+		for (matchId, participantId, totalFlatMasteryAp, totalPercentMasteryAp) in c.fetchall():
+			c.execute('''UPDATE participant
+				SET totalFlatMasteryAp = ?, totalPercentMasteryAp = ?
+				WHERE participant.matchId = ? AND participant.id = ?''',
+				(totalFlatMasteryAp, totalPercentMasteryAp, matchId, participantId))
+		# Total AP
+		c.execute('''UPDATE participant
+			SET totalAp = (
+				SELECT (totalFlatItemAp + totalFlatRuneAp + totalFlatMasteryAp) *
+				(1 + (totalPercentItemAp + totalPercentRuneAp + totalPercentMasteryAp) / 100)
+				FROM participant AS p
+				WHERE participant.matchId = p.matchId AND participant.id = p.id
+				)
+		''')
 	except:
 		traceback.print_exc()
 

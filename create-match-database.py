@@ -64,6 +64,7 @@ try:
     		percentAp INTEGER,
     		finalStacks INTEGER,
     		maxStacks INTEGER,
+    		stackAp INTEGER,
     		FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id),
     		FOREIGN KEY (matchId, timeBought) REFERENCES event(matchId, timestamp)
 	    	)''')
@@ -98,7 +99,7 @@ try:
             matchId INTEGER REFERENCES match(id),
             timestamp INTEGER NOT NULL,
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT,
+            type TEXT NOT NULL,
             itemId INTEGER REFERENCES item(itemId),
             participantId INTEGER,
             creatorId INTEGER,
