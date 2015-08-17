@@ -38,11 +38,33 @@ try:
 	        deaths INTEGER,
 	        assists INTEGER,
 	        assassinations INTEGER,
+	        firstBloodKill INTEGER,
+	        firstBloodAssist INTEGER,
+	        firstTowerKill INTEGER,
+	        firstTowerAssist INTEGER,
+	        totalTimeCrowdControlDealt INTEGER,
 	        damageDealt INTEGER,
 	        damageDealtToChampions INTEGER,
 	        magicDamageDealt INTEGER,
-	        magicDamageDealtToChampions INTEGER
-        )''')
+	        magicDamageDealtToChampions INTEGER,
+			totalFlatItemAp INT,
+			totalPercentItemAp REAL,
+			totalFlatRuneAp REAL,
+			totalPercentRuneAp REAL,
+			totalFlatMasteryAp REAL,
+			totalPercentMasteryAp REAL,
+			totalAp REAL
+	        )''')
+    c.execute('''CREATE TABLE participantItem (
+    		matchId INTEGER,
+    		participantId INTEGER,
+    		itemId INTEGER REFERENCES item(id),
+    		flatAp INTEGER,
+    		percentAp INTEGER,
+    		finalStacks INTEGER,
+    		maxStacks INTEGER,
+    		FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id)
+	    	)''')
     c.execute('''CREATE TABLE participantMastery (
 	    	matchId INTEGER,
 	    	participantId INTEGER,
@@ -57,16 +79,6 @@ try:
 	    	rank INTEGER,
 	    	FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id)
     	)''')
-    c.execute('''CREATE TABLE participantItem (
-	    	matchId INTEGER,
-	    	participantId INTEGER,
-	    	itemId INTEGER REFERENCES item(id),
-	    	timeBought INTEGER,
-	    	orderBought INTEGER,
-	    	goldThreshold INTEGER,
-	    	maxStacks INTEGER,
-	    	finalStacks INTEGER,
-	    	FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, participantId))''')
     c.execute('''CREATE TABLE participantFrame (
             matchId INTEGER REFERENCES match(id),
             timestamp INTEGER,
@@ -78,7 +90,7 @@ try:
             level INTEGER,
             minionsKilled INTEGER,
             jungleMinionsKilled INTEGER,
-            PRIMARY KEY (matchId, timestamp)
+            PRIMARY KEY (matchId, timestamp, participantId)
             )''')
     c.execute('''CREATE TABLE event (
             matchId INTEGER REFERENCES match(id),
@@ -111,3 +123,4 @@ except sqlite3.Error:
     traceback.print_exc()
 
 conn.close()
+input()

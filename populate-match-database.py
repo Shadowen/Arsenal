@@ -16,7 +16,12 @@ http = urllib3.PoolManager(
 conn = sqlite3.connect('database.db')
 c = conn.cursor()
 
-matchId = 1852538938
+# matchId = 1852538938
+# matchId = 1852538938
+# matchId = 1852539534
+# matchId = 1852539696
+matchId = 1852558155
+# matchId = 1852559476
 with open('apikey.txt', 'r') as f:
     apiKey = f.read()
 
@@ -52,24 +57,21 @@ try:
             c.execute('''INSERT INTO participantMastery (matchId, participantId, masteryId, rank) VALUES (?, ?, ?, ?)''', (matchId, participantId, mastery['masteryId'], mastery['rank']))
         for rune in participant['runes']:
             c.execute('''INSERT INTO participantRune (matchId, participantId, runeId, rank) VALUES (?, ?, ?, ?)''', (matchId, participantId, rune['runeId'], rune['rank']))
-        for item in [participant['stats']['item' + str(i)] for i in range(0, 7)]:
-            c.execute('''INSERT INTO participantItem (matchId, itemId) VALUES (?, ?)''', (matchId, item))
 
     for frame in data['timeline']['frames']:
         timestamp = frame['timestamp']
         for (participantId, participantFrame) in frame['participantFrames'].items():
-            print(participantId, '@', timestamp)
             c.execute('''INSERT INTO participantFrame (matchId, timestamp, participantId, positionX, positionY, currentGold, totalGold, level, minionsKilled, jungleMinionsKilled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                 (matchId, timestamp, participantFrame['participantId'], participantFrame['position']['x'], participantFrame['position']['y'], participantFrame['currentGold'],
                     participantFrame['totalGold'], participantFrame['level'], participantFrame['minionsKilled'], participantFrame['jungleMinionsKilled']))
         for event in frame.get('events', []):
             eventDefault = defaultdict(lambda: 'NULL', event)
-            c.execute('''INSERT INTO event (matchId, timestamp, type, itemId, participant, creatorId, killerId, victimId, positionX, positionY) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                (matchId, event['timestamp'], event['eventType'], event['itemId'], eventDefault['participantId'], eventDefault['creatorId'],
+            c.execute('''INSERT INTO event (matchId, timestamp, type, itemId, participantId, creatorId, killerId, victimId, positionX, positionY) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                (matchId, event['timestamp'], event['eventType'], eventDefault['itemId'], eventDefault['participantId'], eventDefault['creatorId'],
                     eventDefault['killerId'], eventDefault['victimId'], event.get('position', {'x' : 'NULL'})['x'], event.get('position', {'y' : 'NULL'})['y']))
-
+    conn.commit()
 except sqlite3.Error:
     traceback.print_exc()
 
-print("done!")
 conn.close()
+input()
