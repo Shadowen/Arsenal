@@ -65,6 +65,7 @@ try:
     		finalStacks INTEGER,
     		maxStacks INTEGER,
     		stackAp INTEGER,
+    		goldThreshold INTEGER,
     		FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id),
     		FOREIGN KEY (matchId, timeBought) REFERENCES event(matchId, timestamp)
 	    	)''')

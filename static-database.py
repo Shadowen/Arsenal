@@ -11,59 +11,30 @@ http = urllib3.PoolManager(
 conn = sqlite3.connect('database.db')
 c = conn.cursor()
 
-version = '5.11.1'
 with open('apikey.txt', 'r') as f:
     apiKey = f.read()
 
 # Items
 try:
     c.execute(
-        '''CREATE TABLE item (
-            id INTEGER,
-            name TEXT,
-            version TEXT,
-            flatAp INTEGER,
-            percentAp REAL,
-            gold INTEGER,
-            PRIMARY KEY (version, id)
-            )''')
-    r = http.request(
-        'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/item?version={}&itemListData=gold,image,stats&api_key={}'.format(version, apiKey))
-    responseData = json.loads(r.data.decode("utf-8"))
-    for itemId, item in responseData["data"].items():
-        c.execute('''INSERT INTO item (id, name, version, flatAp, percentAp, gold) VALUES (?, ?, ?, ?, ?, ?)''', (item["id"], item["name"], version, item[
-                  "stats"].get("FlatMagicDamageMod", 0), item["stats"].get("PercentMagicDamageMod", 0), item["gold"]["total"]))
-    # Deathcap pls
-    c.execute('''UPDATE item SET percentAp = 30 WHERE id = 3089''')
-    conn.commit()
-    print("Items table created with {} items.".format(
-        len(responseData["data"])))
-except Exception:
-    traceback.print_exc()
-# Runes
-try:
+    '''CREATE TABLE item (
+        id INTEGER,
+        name TEXT,
+        version TEXT,
+        flatAp INTEGER,
+        percentAp REAL,
+        gold INTEGER,
+        PRIMARY KEY (version, id)
+        )''')
     c.execute(
-        '''CREATE TABLE rune (
-            id INTEGER,
-            name TEXT,
-            version TEXT,
-            flatAp INTEGER,
-            percentAp REAL,
-            PRIMARY KEY (version, id)
-            )''')
-    r = http.request(
-        'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/rune?version={}&runeListData=stats&api_key={}'.format(version, apiKey))
-    responseData = json.loads(r.data.decode("utf-8"))
-    for runeId, rune in responseData["data"].items():
-        c.execute('INSERT INTO rune (id, name, version, flatAp, percentAp) VALUES (?, ?, ?, ?, ?)', (rune["id"], rune[
-                  "name"], version, rune["stats"].get("FlatMagicDamageMod", 0), rune["stats"].get("PercentMagicDamageMod", 0)))
-    conn.commit()
-    print("Runes table created with {} runes.".format(
-        len(responseData["data"])))
-except Exception:
-    traceback.print_exc()
-# Masteries
-try:
+    '''CREATE TABLE rune (
+        id INTEGER,
+        name TEXT,
+        version TEXT,
+        flatAp INTEGER,
+        percentAp REAL,
+        PRIMARY KEY (version, id)
+        )''')
     c.execute(
         '''CREATE TABLE mastery (
             id INTEGER,
@@ -74,24 +45,65 @@ try:
             percentAp REAL,
             PRIMARY KEY (version, id, rank)
             )''')
-    c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
-              (4123, 'Mental Force', version, 1, 6, 0))
-    c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
-              (4123, 'Mental Force', version, 2, 11, 0))
-    c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
-              (4123, 'Mental Force', version, 3, 16, 0))
-    c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
-              (4133, 'Arcane Mastery', version, 1, 6, 0))
-    c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
-              (4143, 'Archmage', version, 1, 0, 2))
-    c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
-              (4143, 'Archmage', version, 2, 0, 3.5))
-    c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
-              (4143, 'Archmage', version, 3, 0, 5))
-    conn.commit()
-    print("Masteries table created with {} masteries.".format(7))
-except Exception:
+except:
     traceback.print_exc()
+
+def populateStaticTables(version):
+    print('Version ' + version + ' static tables')
+    # Champions
+    # Items
+    try: 
+        r = http.request(
+            'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/item?version={}&itemListData=gold,image,stats&api_key={}'.format(version, apiKey))
+        responseData = json.loads(r.data.decode("utf-8"))
+        for itemId, item in responseData["data"].items():
+            c.execute('''INSERT INTO item (id, name, version, flatAp, percentAp, gold) VALUES (?, ?, ?, ?, ?, ?)''', (item["id"], item["name"], version, item[
+                      "stats"].get("FlatMagicDamageMod", 0), item["stats"].get("PercentMagicDamageMod", 0), item["gold"]["total"]))
+        # Deathcap pls
+        c.execute('''UPDATE item SET percentAp = 30 WHERE id = 3089''')
+        conn.commit()
+        print("Items table created with {} items.".format(
+            len(responseData["data"])))
+    except Exception:
+        traceback.print_exc()
+    # Runes
+    try:
+        
+        r = http.request(
+            'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/rune?version={}&runeListData=stats&api_key={}'.format(version, apiKey))
+        responseData = json.loads(r.data.decode("utf-8"))
+        for runeId, rune in responseData["data"].items():
+            c.execute('INSERT INTO rune (id, name, version, flatAp, percentAp) VALUES (?, ?, ?, ?, ?)', (rune["id"], rune[
+                      "name"], version, rune["stats"].get("FlatMagicDamageMod", 0), rune["stats"].get("PercentMagicDamageMod", 0)))
+        conn.commit()
+        print("Runes table created with {} runes.".format(
+            len(responseData["data"])))
+    except Exception:
+        traceback.print_exc()
+    # Masteries
+    try:
+        c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
+                  (4123, 'Mental Force', version, 1, 6, 0))
+        c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
+                  (4123, 'Mental Force', version, 2, 11, 0))
+        c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
+                  (4123, 'Mental Force', version, 3, 16, 0))
+        c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
+                  (4133, 'Arcane Mastery', version, 1, 6, 0))
+        c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
+                  (4143, 'Archmage', version, 1, 0, 2))
+        c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
+                  (4143, 'Archmage', version, 2, 0, 3.5))
+        c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
+                  (4143, 'Archmage', version, 3, 0, 5))
+        conn.commit()
+        print("Masteries table created with {} masteries.".format(7))
+    except Exception:
+        traceback.print_exc()
+
+populateStaticTables('5.11.1')
+populateStaticTables('5.14.1')
+
 # Finalize
 conn.close()
 print('Done!')

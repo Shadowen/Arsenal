@@ -17,10 +17,11 @@ conn = sqlite3.connect('database.db')
 c = conn.cursor()
 try:
 	# Items bought
-	c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, flatAp, percentAp)
-		SELECT event.matchId, event.participantId, event.itemId, event.timestamp, item.flatAp, item.percentAp
+	c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, flatAp, percentAp, goldThreshold)
+		SELECT event.matchId, event.participantId, event.itemId, event.timestamp, item.flatAp, item.percentAp, participantFrame.totalGold
 		FROM event
 		LEFT JOIN item ON event.itemId = item.id
+		LEFT JOIN participantFrame ON event.matchId = participantFrame.matchId AND event.participantId = participantFrame.participantId AND CAST(event.timestamp / 60000 AS INTEGER) * 60000 = participantFrame.timestamp
 		WHERE event.type == "ITEM_PURCHASED"
 		''')
 	# Resolve stacks
@@ -170,7 +171,26 @@ try:
 		''')
 	except:
 		traceback.print_exc()
-
+	try:
+		# Build type
+		class getBuildType:
+			def __init__(self):
+				self.type = 'AD'
+			def step(self, championId, itemId):
+				self.type = self.type = 'AD' if self.type == 'AP' else 'AD'
+			def finalize(self):
+				return self.type
+		conn.create_aggregate("getBuildType", 2, getBuildType)
+		c.execute('''UPDATE participant
+			SET buildType = (
+				SELECT getBuildType(championId, itemId)
+				FROM participantItem 
+				WHERE participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
+				GROUP BY participantItem.matchId, participantItem.participantId
+			)
+			''')
+	except:
+		traceback.print_exc()
 	conn.commit()
 except sqlite3.Error:
 	traceback.print_exc()
