@@ -14,18 +14,33 @@ c = conn.cursor()
 with open('apikey.txt', 'r') as f:
     apiKey = f.read()
 
-# Items
+# Champions
 try:
-    c.execute(
-    '''CREATE TABLE item (
+    c.execute('''CREATE TABLE champion (
+        version TEXT,
         id INTEGER,
         name TEXT,
+        title TEXT,
+        PRIMARY KEY (version, id))
+        ''')
+except:
+    traceback.print_exc()
+try:
+    # Items
+    c.execute(
+    '''CREATE TABLE item (
         version TEXT,
+        id INTEGER,
+        name TEXT,
         flatAp INTEGER,
         percentAp REAL,
         gold INTEGER,
         PRIMARY KEY (version, id)
         )''')
+except:
+    traceback.print_exc()
+try:
+    # Runes
     c.execute(
     '''CREATE TABLE rune (
         id INTEGER,
@@ -35,6 +50,10 @@ try:
         percentAp REAL,
         PRIMARY KEY (version, id)
         )''')
+except:
+    traceback.print_exc()
+try:
+    # Masteries
     c.execute(
         '''CREATE TABLE mastery (
             id INTEGER,
@@ -51,6 +70,17 @@ except:
 def populateStaticTables(version):
     print('Version ' + version + ' static tables')
     # Champions
+    try: 
+        r = http.request(
+            'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/champion?version={}&api_key={}'.format(version, apiKey))
+        responseData = json.loads(r.data.decode("utf-8"))
+        for championKey, champion in responseData["data"].items():
+            c.execute('''INSERT INTO champion (version, id, name, title) VALUES (?, ?, ?, ?)''',
+                (version, champion['id'], champion['name'], champion['title']))
+        print("Champions table created with {} champions.".format(
+            len(responseData["data"])))
+    except Exception:
+        traceback.print_exc()
     # Items
     try: 
         r = http.request(
@@ -61,23 +91,19 @@ def populateStaticTables(version):
                       "stats"].get("FlatMagicDamageMod", 0), item["stats"].get("PercentMagicDamageMod", 0), item["gold"]["total"]))
         # Deathcap pls
         c.execute('''UPDATE item SET percentAp = 30 WHERE id = 3089''')
-        conn.commit()
         print("Items table created with {} items.".format(
             len(responseData["data"])))
     except Exception:
         traceback.print_exc()
     # Runes
     try:
-        
         r = http.request(
             'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/rune?version={}&runeListData=stats&api_key={}'.format(version, apiKey))
         responseData = json.loads(r.data.decode("utf-8"))
         for runeId, rune in responseData["data"].items():
             c.execute('INSERT INTO rune (id, name, version, flatAp, percentAp) VALUES (?, ?, ?, ?, ?)', (rune["id"], rune[
                       "name"], version, rune["stats"].get("FlatMagicDamageMod", 0), rune["stats"].get("PercentMagicDamageMod", 0)))
-        conn.commit()
-        print("Runes table created with {} runes.".format(
-            len(responseData["data"])))
+        print("Runes table created with {} runes.".format(len(responseData["data"])))
     except Exception:
         traceback.print_exc()
     # Masteries
@@ -96,14 +122,13 @@ def populateStaticTables(version):
                   (4143, 'Archmage', version, 2, 0, 3.5))
         c.execute('INSERT INTO mastery (id, name, version, rank, flatAp, percentAp) VALUES (?, ?, ?, ?, ?, ?)',
                   (4143, 'Archmage', version, 3, 0, 5))
-        conn.commit()
         print("Masteries table created with {} masteries.".format(7))
     except Exception:
         traceback.print_exc()
 
 populateStaticTables('5.11.1')
 populateStaticTables('5.14.1')
-
+conn.commit()
 # Finalize
 conn.close()
 print('Done!')

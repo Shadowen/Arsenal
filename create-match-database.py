@@ -22,6 +22,7 @@ try:
 			teamId INTEGER,
 			championId INTEGER,
 			pickTurn INTEGER,
+			PRIMARY KEY (matchId, pickTurn),
 			FOREIGN KEY (matchId, teamId) REFERENCES team(matchId, id)
 			)''')
     c.execute('''CREATE TABLE participant (
