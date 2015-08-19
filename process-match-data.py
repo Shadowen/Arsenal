@@ -18,47 +18,90 @@ c = conn.cursor()
 
 # Some useful views
 try:
+	c.execute('''CREATE VIEW matchParticipant AS
+		SELECT match.*, participant.*
+		FROM participant
+		LEFT JOIN match ON participant.matchId = match.id;''')
 	c.execute('''CREATE VIEW eventItem AS
-	    SELECT matchId,
-	           type,
-	           timestamp,
-	           item.name
-	      FROM event
-	           LEFT JOIN
-	           [match] ON event.matchId = [match].id
-	           LEFT JOIN
-	           item ON [match].version = item.version AND 
-	                   event.itemId = item.id
-	     ORDER BY timestamp;''')
+		SELECT matchId,
+			   type,
+			   timestamp,
+			   item.name
+		  FROM event
+			   LEFT JOIN
+			   [match] ON event.matchId = [match].id
+			   LEFT JOIN
+			   item ON [match].version = item.version AND 
+					   event.itemId = item.id
+		 ORDER BY timestamp;''')
 	c.execute('''CREATE VIEW participantItemStatic AS
-	    SELECT matchId,
-	           participantId,
-	           itemId,
-	           name,
-	           flatAp
-	      FROM participantItem
-	           LEFT JOIN
-	           [match] ON participantItem.matchId = [match].id
-	           LEFT JOIN
-	           item ON [match].version = item.version AND 
-	                   participantItem.itemId = item.id''')
+		SELECT matchId,
+			   participantId,
+			   itemId,
+			   name,
+			   flatAp
+		  FROM participantItem
+			   LEFT JOIN
+			   [match] ON participantItem.matchId = [match].id
+			   LEFT JOIN
+			   item ON [match].version = item.version AND 
+					   participantItem.itemId = item.id''')
 	# Items bought
 	c.execute('''SELECT matchId, id FROM participant''')
 	for (matchId, participantId) in c.fetchall():
-		c.execute('''SELECT event.type, event.timestamp, event.itemId, frame.*
-			FROM event
-			LEFT JOIN match ON event.matchId = match.id
-			LEFT JOIN frame ON event.matchId = match.id AND event.frameId = frame.id
-			LEFT JOIN item ON match.version = item.version AND event.itemId=item.id
-			WHERE match.id = ? AND event.participantId = ? AND (event.type = "ITEM_PURCHASED" OR event.type = "ITEM_DESTROYED" OR event.type = "ITEM_SOLD")
-			ORDER BY timestamp''',
+		c.execute('''SELECT event.type,
+							event.timestamp,
+							event.itemId,
+							event.itemBefore,
+							event.itemAfter,
+							participantFrame.totalGold
+					FROM event
+							LEFT JOIN
+							[match] ON event.matchId = [match].id
+							LEFT JOIN
+							participantFrame ON [match].id = participantFrame.matchId AND 
+												event.frameTimestamp = participantFrame.timestamp AND 
+												event.participantId = participantFrame.participantId
+							LEFT JOIN
+							item ON [match].version = item.version AND 
+									event.itemId = item.id
+					WHERE [match].id = ? AND 
+							event.participantId = ? AND 
+							(event.type = "ITEM_PURCHASED" OR 
+							event.type = "ITEM_DESTROYED" OR 
+							event.type = "ITEM_SOLD" OR
+							event.type = "ITEM_UNDO") 
+					ORDER BY event.timestamp,
+							CASE event.type WHEN "ITEM_PURCHASED" THEN 0 END DESC;''',
 			(matchId, participantId))
 		items = []
-		for (eventType, timestamp, itemId, goldThreshold) in c.fetchall():
+		for (eventType, timestamp, itemId, itemBefore, itemAfter, goldThreshold) in c.fetchall():
+			## TODO boot enchantments
+			# SELECT event.timestamp,
+			#        event.type,
+			#        event.itemId,
+			#        event.itemBefore,
+			#        event.itemAfter,
+			#        item.name
+			#   FROM event
+			#        LEFT JOIN
+			#        [match] ON event.matchId = [match].id
+			#        LEFT JOIN
+			#        item ON [match].version = item.version AND 
+			#                event.itemId = item.id
+			#  WHERE matchId = 1900729148 AND 
+			#        participantId = 1
+			#  ORDER BY event.timestamp;
 			if eventType == 'ITEM_PURCHASED':
 				items.append((itemId, timestamp, goldThreshold))
 			elif eventType == 'ITEM_DESTROYED' or eventType == 'ITEM_SOLD':
-				items.pop([x for x in zip(*items)][0].index(itemId))
+				currentItemIds = zip(*items).__next__()
+				if itemId in currentItemIds:
+					items.pop(currentItemIds.index(itemId))
+			elif eventType == 'ITEM_UNDO':
+				if (itemBefore != 0):
+					items.pop(zip(*items).__next__().index(itemBefore))
+				items.append((itemAfter, timestamp, goldThreshold))
 		for (itemId, timeBought, goldThreshold) in items:
 			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, goldThreshold)
 				VALUES (?, ?, ?, ?, ?)''',
@@ -80,7 +123,7 @@ try:
 			storedMatchId = matchId
 			matchDuration = c.fetchone()[0]
 		# Calculate the final number of stacks
-		finalStacks = min(matchDuration // 60 - timeBought // 1000 // 60, 20)
+		finalStacks = min(matchDuration // 60 - timeBought // 1000 // 60, 10)
 		# Update the table
 		c.execute('''UPDATE participantItem
 			SET finalStacks = ?, maxStacks = ?
@@ -95,7 +138,7 @@ try:
 	# Mejais
 	class finalStacks:
 		def __init__(self):
-			self.stacks = 6
+			self.stacks = 5
 		def step(self, participantId, killerId, victimId, assistId):
 			if participantId == killerId:
 				self.stacks = min(self.stacks + 2, 20)
@@ -111,7 +154,7 @@ try:
 	conn.create_aggregate("finalStacks", 4, finalStacks)
 	class maxStacks:
 		def __init__(self):
-			self.stacks = 6
+			self.stacks = 5
 			self.maxStacks = self.stacks
 		def step(self, participantId, killerId, victimId, assistId):
 			if participantId == killerId:
@@ -162,12 +205,29 @@ try:
 	print('Item stacks resolved')
 
 	# Item AP
-	c.execute('''SELECT participant.matchId, participant.id, TOTAL(item.flatAp + participantItem.finalStacks * 20), MAX(item.percentAp)
-		FROM participant
-		LEFT JOIN participantItem ON participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
-		LEFT JOIN item ON participantItem.itemId = item.id
-		GROUP BY participant.matchId, participant.id''')
-	# WHERE participantItem.stacks = 0 OR participantItem.itemId = RoA OR Mejai	
+	def stacksToAp(itemId, stacks):
+		# RoA
+		if itemId == 3027:
+			return stacks * 4
+		# Mejai
+		elif itemId == 3041:
+			return stacks * 8
+		return 0;
+	conn.create_function("stacksToAp", 2, stacksToAp)
+	c.execute('''SELECT participant.matchId,
+						participant.id,
+						TOTAL(item.flatAp + stacksToAp(item.id, participantItem.finalStacks) ),
+						MAX(item.percentAp) 
+				FROM participant
+					LEFT JOIN
+					[match] ON participant.matchId = [match].id
+					LEFT JOIN
+					participantItem ON [match].id = participantItem.matchId AND 
+									participant.id = participantItem.participantId
+					LEFT JOIN
+					item ON [match].version = item.version AND 
+							participantItem.itemId = item.id
+				GROUP BY participant.matchId, participant.id;''')
 	for (matchId, participantId, totalFlatItemAp, totalPercentItemAp) in c.fetchall():
 		c.execute('''UPDATE participant
 			SET totalFlatItemAp = ?, totalPercentItemAp = ?
@@ -176,8 +236,9 @@ try:
 	# Rune AP
 	c.execute('''SELECT participant.matchId, participant.id, TOTAL(rune.flatAp), TOTAL(rune.percentAp)
 		FROM participant
+		LEFT JOIN match ON participant.matchId = match.id
 		LEFT JOIN participantRune ON participant.matchId = participantRune.matchId AND participant.id = participantRune.participantId
-		LEFT JOIN rune ON participantRune.runeId = rune.id
+		LEFT JOIN rune ON match.version = rune.version AND participantRune.runeId = rune.id
 		GROUP BY participant.matchId, participant.id''')
 	for (matchId, participantId, totalFlatRuneAp, totalPercentRuneAp) in c.fetchall():
 		c.execute('''UPDATE participant
@@ -187,8 +248,9 @@ try:
 	# Mastery AP
 	c.execute('''SELECT participant.matchId, participant.id, TOTAL(mastery.flatAp), TOTAL(mastery.percentAp)
 		FROM participant
-		LEFT JOIN participantMastery ON participant.matchId = participantMastery.matchId AND participant.id = participantMastery.participantId
-		LEFT JOIN mastery ON participantMastery.masteryId = mastery.id AND participantMastery.rank = mastery.rank
+		LEFT JOIN match ON participant.matchId = match.id
+		LEFT JOIN participantMastery ON match.id = participantMastery.matchId AND participant.id = participantMastery.participantId
+		LEFT JOIN mastery ON match.version = mastery.version AND participantMastery.masteryId = mastery.id AND participantMastery.rank = mastery.rank
 		GROUP BY participant.matchId, participant.id''')
 	for (matchId, participantId, totalFlatMasteryAp, totalPercentMasteryAp) in c.fetchall():
 		c.execute('''UPDATE participant
@@ -234,9 +296,9 @@ try:
 			if itemId in self.adItems:
 				self.adItemCount += 1
 		def finalize(self):
-			if self.apItemCount >= (self.adItemCount + self.EPSILON if self.adItemCount > 0 else 0):
+			if self.apItemCount >= (self.adItemCount + self.EPSILON if self.adItemCount > 0 else 1):
 				return 'AP'
-			elif self.adItemCount >= (self.apItemCount + self.EPSILON if self.apItemCount > 0 else 0):
+			elif self.adItemCount >= (self.apItemCount + self.EPSILON if self.apItemCount > 0 else 1):
 				return 'AD'
 			return 'Undecided'
 	conn.create_aggregate('getBuildType', 2, getBuildType)

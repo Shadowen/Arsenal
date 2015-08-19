@@ -102,6 +102,8 @@ try:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             type TEXT NOT NULL,
             itemId INTEGER REFERENCES item(itemId),
+            itemBefore INTEGER,
+            itemAfter INTEGER,
             participantId INTEGER,
             creatorId INTEGER,
             killerId INTEGER,

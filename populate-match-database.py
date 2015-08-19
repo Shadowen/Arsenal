@@ -34,7 +34,7 @@ for matchSet in files:
     requestNum = 1
     for (matchNum, matchId) in enumerate(matchIds):
         ## TODO
-        if matchNum == 10:
+        if matchNum == 3:
             break
         try:
             while True:
@@ -73,10 +73,10 @@ for matchSet in files:
                 # Participants
                 for participant in data['participants']:
                     participantId = participant['participantId']
-                    c.execute('''INSERT INTO participant (matchId, id, teamId, championId, role, lane, kills, deaths, assists, damageDealt, damageDealtToChampions,
+                    c.execute('''INSERT INTO participant (matchId, id, teamId, championId, champLevel, role, lane, kills, deaths, assists, damageDealt, damageDealtToChampions,
                         magicDamageDealt, magicDamageDealtToChampions, firstBloodKill, firstBloodAssist, firstTowerKill, firstTowerAssist, totalTimeCrowdControlDealt)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                        (matchId, participantId, participant['teamId'], participant['championId'], participant['timeline']['role'], participant['timeline']['lane'],
+                        (matchId, participantId, participant['teamId'], participant['championId'], participant['stats']['champLevel'], participant['timeline']['role'], participant['timeline']['lane'],
                             participant['stats']['kills'], participant['stats']['deaths'], participant['stats']['assists'], participant['stats']['totalDamageDealt'],
                         participant['stats']['totalDamageDealtToChampions'], participant['stats']['magicDamageDealt'], participant['stats']['magicDamageDealtToChampions'],
                         participant['stats']['firstBloodKill'], participant['stats']['firstBloodAssist'], participant['stats']['firstTowerKill'],
@@ -110,11 +110,11 @@ for matchSet in files:
                                 participantFrame['totalGold'], participantFrame['level'], participantFrame['minionsKilled'], participantFrame['jungleMinionsKilled']))
                     for event in frame.get('events', []):
                         eventDefault = defaultdict(lambda: 'NULL', event)
-                        c.execute('''INSERT INTO event (matchId, frameTimestamp, timestamp, type, itemId, participantId, creatorId, killerId, victimId,
-                            positionX, positionY) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                            (matchId, frame['timestamp'], event['timestamp'], event['eventType'], eventDefault['itemId'], eventDefault['participantId'],
-                                eventDefault['creatorId'], eventDefault['killerId'], eventDefault['victimId'],
-                                event.get('position', {'x' : 'NULL'})['x'], event.get('position', {'y' : 'NULL'})['y']))
+                        c.execute('''INSERT INTO event (matchId, frameTimestamp, timestamp, type, itemId, itemBefore, itemAfter, participantId, creatorId, killerId, victimId,
+                            positionX, positionY) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                            (matchId, frame['timestamp'], event['timestamp'], event['eventType'], eventDefault['itemId'], eventDefault['itemBefore'],
+                            eventDefault['itemAfter'], eventDefault['participantId'], eventDefault['creatorId'], eventDefault['killerId'],
+                            eventDefault['victimId'], event.get('position', {'x' : 'NULL'})['x'], event.get('position', {'y' : 'NULL'})['y']))
                         for assist in event.get('assistingParticipantIds', []):
                             c.execute('''INSERT INTO assist (matchId, eventId, participantId)
                                 VALUES (?, ?, ?)''', (matchId, c.lastrowid, participantId))

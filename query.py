@@ -35,17 +35,6 @@ print('Done!')
 input()
 
 
-SELECT participantItem.itemId, item.flatAp, item.percentAp
-		FROM participant
-		LEFT JOIN participantItem ON participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
-		LEFT JOIN match ON participant.matchId = match.id
-		LEFT JOIN item ON participantItem.itemId = item.id AND item.version = match.version
-		WHERE item.flatAp > 0
-		LIMIT 10;
-
-
-SELECT *
-	FROM participant
-	LEFT JOIN match ON participant.matchId = match.id
-	LEFT JOIN participantItem ON participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
-	WHERE finalStacks = 20;
+1852538938
+2
+74
