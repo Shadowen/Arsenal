@@ -1,6 +1,7 @@
 # Clone the Repo
 1. Clone with `git clone`
 2. Paste your Riot API key inside `apikey.txt`.
+3. Run `git update-index --assume-unchanged -- apikey.txt` so you don't accidentally commit your API key.
 
 # Database Build Process
 1. Run `clean.py` to delete any previous database.
