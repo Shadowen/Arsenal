@@ -102,17 +102,19 @@ for matchSet in files:
                             (summonerId, player['player']['summonerName'], player['player']['matchHistoryUri'], player['player']['profileIcon']))
 
                 for frame in data['timeline']['frames']:
-                    timestamp = frame['timestamp']
                     for (participantId, participantFrame) in frame['participantFrames'].items():
                         position = participantFrame.get('position', {'x':'NULL', 'y':'NULL'});
-                        c.execute('''INSERT INTO participantFrame (matchId, timestamp, participantId, positionX, positionY, currentGold, totalGold, level, minionsKilled, jungleMinionsKilled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                            (matchId, timestamp, participantFrame['participantId'], position['x'], position['y'], participantFrame['currentGold'],
+                        c.execute('''INSERT INTO participantFrame (matchId, timestamp, participantId, positionX, positionY, currentGold, totalGold, level,
+                            minionsKilled, jungleMinionsKilled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                            (matchId, frame['timestamp'], participantFrame['participantId'], position['x'], position['y'], participantFrame['currentGold'],
                                 participantFrame['totalGold'], participantFrame['level'], participantFrame['minionsKilled'], participantFrame['jungleMinionsKilled']))
                     for event in frame.get('events', []):
                         eventDefault = defaultdict(lambda: 'NULL', event)
-                        c.execute('''INSERT INTO event (matchId, timestamp, type, itemId, participantId, creatorId, killerId, victimId, positionX, positionY) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                            (matchId, event['timestamp'], event['eventType'], eventDefault['itemId'], eventDefault['participantId'], eventDefault['creatorId'],
-                                eventDefault['killerId'], eventDefault['victimId'], event.get('position', {'x' : 'NULL'})['x'], event.get('position', {'y' : 'NULL'})['y']))
+                        c.execute('''INSERT INTO event (matchId, frameTimestamp, timestamp, type, itemId, participantId, creatorId, killerId, victimId,
+                            positionX, positionY) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                            (matchId, frame['timestamp'], event['timestamp'], event['eventType'], eventDefault['itemId'], eventDefault['participantId'],
+                                eventDefault['creatorId'], eventDefault['killerId'], eventDefault['victimId'],
+                                event.get('position', {'x' : 'NULL'})['x'], event.get('position', {'y' : 'NULL'})['y']))
                         for assist in event.get('assistingParticipantIds', []):
                             c.execute('''INSERT INTO assist (matchId, eventId, participantId)
                                 VALUES (?, ?, ?)''', (matchId, c.lastrowid, participantId))

@@ -16,21 +16,56 @@ http = urllib3.PoolManager(
 conn = sqlite3.connect('database.db')
 c = conn.cursor()
 
+# Some useful views
 try:
+	c.execute('''CREATE VIEW eventItem AS
+	    SELECT matchId,
+	           type,
+	           timestamp,
+	           item.name
+	      FROM event
+	           LEFT JOIN
+	           [match] ON event.matchId = [match].id
+	           LEFT JOIN
+	           item ON [match].version = item.version AND 
+	                   event.itemId = item.id
+	     ORDER BY timestamp;''')
+	c.execute('''CREATE VIEW participantItemStatic AS
+	    SELECT matchId,
+	           participantId,
+	           itemId,
+	           name,
+	           flatAp
+	      FROM participantItem
+	           LEFT JOIN
+	           [match] ON participantItem.matchId = [match].id
+	           LEFT JOIN
+	           item ON [match].version = item.version AND 
+	                   participantItem.itemId = item.id''')
 	# Items bought
-	c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, goldThreshold)
-		SELECT event.matchId, event.participantId, event.itemId, event.timestamp, participantFrame.totalGold
-		FROM event
-		LEFT JOIN item ON event.itemId = item.id
-		LEFT JOIN participantFrame ON event.matchId = participantFrame.matchId AND event.participantId = participantFrame.participantId AND CAST(event.timestamp / 60000 AS INTEGER) * 60000 = participantFrame.timestamp
-		WHERE event.type == "ITEM_PURCHASED"
-		''')
+	c.execute('''SELECT matchId, id FROM participant''')
+	for (matchId, participantId) in c.fetchall():
+		c.execute('''SELECT event.type, event.timestamp, event.itemId, frame.*
+			FROM event
+			LEFT JOIN match ON event.matchId = match.id
+			LEFT JOIN frame ON event.matchId = match.id AND event.frameId = frame.id
+			LEFT JOIN item ON match.version = item.version AND event.itemId=item.id
+			WHERE match.id = ? AND event.participantId = ? AND (event.type = "ITEM_PURCHASED" OR event.type = "ITEM_DESTROYED" OR event.type = "ITEM_SOLD")
+			ORDER BY timestamp''',
+			(matchId, participantId))
+		items = []
+		for (eventType, timestamp, itemId, goldThreshold) in c.fetchall():
+			if eventType == 'ITEM_PURCHASED':
+				items.append((itemId, timestamp, goldThreshold))
+			elif eventType == 'ITEM_DESTROYED' or eventType == 'ITEM_SOLD':
+				items.pop([x for x in zip(*items)][0].index(itemId))
+		for (itemId, timeBought, goldThreshold) in items:
+			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, goldThreshold)
+				VALUES (?, ?, ?, ?, ?)''',
+				(matchId, participantId, itemId, timeBought, goldThreshold))
 	print('Items bought.')
-except:
-	traceback.print_exc()
-# Resolve stacks
-# RoA
-try:
+	# Resolve stacks
+	# RoA
 	c.execute('''SELECT matchId, participantId, timeBought
 		FROM participantItem
 		WHERE participantItem.itemId = 3027
@@ -57,10 +92,7 @@ try:
 		# 	ORDER BY timeBought
 		# 	LIMIT 1''',
 		# 	(finalStacks, maxStacks, matchId, participantId))
-except:
-	traceback.print_exc()
-# Mejais
-try:
+	# Mejais
 	class finalStacks:
 		def __init__(self):
 			self.stacks = 6
@@ -128,9 +160,7 @@ try:
 			WHERE matchId = ? AND participantId = ? AND itemId = 3041''',
 			(finalStacks, maxStacks, matchId, participantId))
 	print('Item stacks resolved')
-except:
-	traceback.print_exc()
-try:
+
 	# Item AP
 	c.execute('''SELECT participant.matchId, participant.id, TOTAL(item.flatAp + participantItem.finalStacks * 20), MAX(item.percentAp)
 		FROM participant
@@ -175,9 +205,7 @@ try:
 			)
 	''')
 	print('Total AP calculated')
-except:
-	traceback.print_exc()
-try:
+
 	class getBuildType:
 		# 3006: Zerks
 		# 3153: BotRK
@@ -221,11 +249,8 @@ try:
 			WHERE matchId = ? AND id = ?''',
 			(buildType, matchId, participantId))
 	print('Build types analyzed')
-except:
-	traceback.print_exc()
 
-try:
-	# Win rates
+	# Champion stats
 	c.execute('''CREATE TABLE championStat (
 			version TEXT,
 			championId INTEGER,
@@ -267,9 +292,31 @@ try:
 			LEFT JOIN match ON ban.matchId = match.id
 			WHERE championStat.version = match.version AND championStat.championId = ban.championId
 			)''')
-except:
-	traceback.print_exc()
-try:
+
+	# Item stats
+	c.execute('''CREATE TABLE itemStat (
+			version TEXT,
+			itemId INTEGER,
+			timesBought INTEGER,
+			winRate REAL,
+			goldThreshold REAL,
+			FOREIGN KEY (version, itemId) REFERENCES item(version, id)
+		)''')
+	c.execute('''INSERT INTO itemStat (version, itemId, timesBought, winRate, goldThreshold)
+			SELECT match.version, participantItem.itemId, COUNT(*), AVG(team.winner), AVG(participantItem.goldThreshold)
+			FROM participant
+			LEFT JOIN participantItem ON participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
+			LEFT JOIN match ON participant.matchId = match.id
+			LEFT JOIN team ON participant.matchId = team.matchId AND participant.teamId = team.id
+			GROUP BY match.version, participantItem.itemId''', ())
+	c.execute('''UPDATE championStat
+		SET bans = (SELECT COUNT(*)
+			FROM ban
+			LEFT JOIN match ON ban.matchId = match.id
+			WHERE championStat.version = match.version AND championStat.championId = ban.championId
+			)''')
+
+	# Player stats
 	c.execute('''CREATE TABLE playerChampion (
 		playerId INTEGER NOT NULL REFERENCES player(id),
 		championId INTEGER NOT NULL,
@@ -330,7 +377,6 @@ try:
 				WHERE playerStat.playerId = player.id AND playerStat.version = match.version AND participant.buildType = "AD"
 			)
 		''')
-	pass
 except:
 	traceback.print_exc()
 

@@ -76,7 +76,7 @@ try:
 	    	FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id)
     	)''')
     c.execute('''CREATE TABLE participantRune (
-	    	matchId INTEGER,
+	    	matchId INTEGER REFERENCES match(id),
 	    	participantId INTEGER,
 	    	runeId INTEGER REFERENCES rune(id),
 	    	rank INTEGER,
@@ -97,6 +97,7 @@ try:
             )''')
     c.execute('''CREATE TABLE event (
             matchId INTEGER REFERENCES match(id),
+            frameTimestamp INTEGER,
             timestamp INTEGER NOT NULL,
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             type TEXT NOT NULL,
@@ -106,10 +107,11 @@ try:
             killerId INTEGER,
             victimId INTEGER,
             positionX INTEGER,
-            positionY INTEGER
+            positionY INTEGER,
+            FOREIGN KEY (matchId, frameTimestamp) REFERENCES participantFrame(matchId, frameTimestamp)
             )''')
     c.execute('''CREATE TABLE assist (
-            matchId INTEGER,
+            matchId INTEGER REFERENCES match(id),
             eventId INTEGER,
             participantId INTEGER REFERENCES participant(id),
             FOREIGN KEY (matchId, eventId) REFERENCES event(matchId, id)
