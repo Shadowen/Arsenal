@@ -25,12 +25,15 @@
     <script>
     var data = [{
         title: "ABC",
+        group: "One",
         values: [0, 6]
     }, {
         title: "B",
+        group: "One",
         values: [1, 5]
     }, {
         title: "C",
+        group: "Two",
         values: [2, 4]
     }];
 
@@ -49,37 +52,32 @@
         .attr("width", width)
         .attr("height", height);
 
-    var row = chart.selectAll("g")
+    var row = chart
+        .selectAll("g")
         .data(data)
         .enter()
         .append("g");
+
     var leftBar = row
         .append("rect")
-        .classed('bar-left', true);
+        .classed('bar-left', true)
+        .attr('x', function(d, i, a) {
+            return halfWidth - (d.values[a]) - centerOffset;
+        });
     var rightBar = row
         .append("rect")
-        .classed('bar-right', true);;
+        .classed('bar-right', true)
+        .attr('x', halfWidth + centerOffset);
     var bars = leftBar.union(rightBar)
         .classed('bar', true)
         .attr('width', function(d, i, a) {
-            var xScale = d3.scale.linear()
-                .domain([0, d3.max(d.values)])
-                .range([0, halfWidth - centerOffset])
-            return xScale(d.values[a]);
+            return (d.values[a]);
         })
         .attr('height', barHeight - barSpacing)
         .attr('y', function(d, i, a) {
             return i * barHeight;
         });
-    leftBar.attr('x', function(d, i, a) {
-        var xScale = d3.scale.linear()
-            .domain([0, d3.max(d.values)])
-            .range([0, halfWidth - centerOffset])
-        return halfWidth - xScale(d.values[a]) - centerOffset;
-    });
-    rightBar.attr('x', halfWidth + centerOffset);
-
-    row.append('text')
+    var categoryLabel = row.append('text')
         .classed('category-label', true)
         .attr("x", halfWidth)
         .attr("y", function(d, i, a) {
