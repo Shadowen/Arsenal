@@ -61,8 +61,6 @@ try:
     		participantId INTEGER,
     		itemId INTEGER REFERENCES item(id),
     		timeBought INTEGER,
-    		flatAp INTEGER,
-    		percentAp INTEGER,
     		finalStacks INTEGER,
     		maxStacks INTEGER,
     		stackAp INTEGER,

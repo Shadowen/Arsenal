@@ -18,8 +18,8 @@ c = conn.cursor()
 
 try:
 	# Items bought
-	c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, flatAp, percentAp, goldThreshold)
-		SELECT event.matchId, event.participantId, event.itemId, event.timestamp, item.flatAp, item.percentAp, participantFrame.totalGold
+	c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, goldThreshold)
+		SELECT event.matchId, event.participantId, event.itemId, event.timestamp, participantFrame.totalGold
 		FROM event
 		LEFT JOIN item ON event.itemId = item.id
 		LEFT JOIN participantFrame ON event.matchId = participantFrame.matchId AND event.participantId = participantFrame.participantId AND CAST(event.timestamp / 60000 AS INTEGER) * 60000 = participantFrame.timestamp

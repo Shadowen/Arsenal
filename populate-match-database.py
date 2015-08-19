@@ -34,18 +34,11 @@ for matchSet in files:
     requestNum = 1
     for (matchNum, matchId) in enumerate(matchIds):
         ## TODO
-        if matchNum == 50:
+        if matchNum == 10:
             break
         try:
             while True:
-                # TODO
-                if requestNum % 10 == 0:
-                    print('Sleeping 1 second')
-                    time.sleep(1)
-                elif requestNum % 500 == 0:
-                    print('Sleeping 500 seconds... Zzz.')
-                    time.sleep(500)
-
+                time.sleep(1)
                 print("Loading match {}({})".format(matchId, requestNum))
                 requestNum += 1
                 r = http.request(
@@ -53,9 +46,10 @@ for matchSet in files:
                 if r.status != 200:
                     print('HTTP Request failed: ' + str(r.status))
                     if (r.status == 429):
-                        waitTime = r.getheader('Retry-After')
+                        header = r.getheader('Retry-After')
+                        waitTime = header if header is not None else 2
                         print('Waiting {} seconds...'.format(waitTime))
-                        time.sleep(waitTime)
+                        time.sleep(float(waitTime) + 1)
                     elif (r.status == 403):
                         print('Uh oh! Blacklisted.')
                         time.sleep(10000)
@@ -65,7 +59,7 @@ for matchSet in files:
                 matchId = data['matchId']
 
                 c.execute('''INSERT INTO match (id, version, duration, region, queueType) VALUES (?, ?, ?, ?, ?)''',
-                          (matchId, data['matchVersion'], data['matchDuration'], data['region'], data['queueType']))
+                          (matchId, data['matchVersion'][:4], data['matchDuration'], data['region'], data['queueType']))
                 # Assert frameInterval == 60000
                 frameInterval = data['timeline']['frameInterval']
                 if (frameInterval != 60000):
