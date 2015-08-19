@@ -18,9 +18,9 @@ try:
 		    PRIMARY KEY (matchId, id)
 		    )''')
     c.execute('''CREATE TABLE ban (
-			matchId INTEGER,
+			matchId INTEGER REFERENCES match(id),
 			teamId INTEGER,
-			championId INTEGER,
+			championId INTEGER REFERENCES champion(id),
 			pickTurn INTEGER,
 			PRIMARY KEY (matchId, pickTurn),
 			FOREIGN KEY (matchId, teamId) REFERENCES team(matchId, id)
@@ -30,7 +30,7 @@ try:
 	        playerId INTEGER REFERENCES player(id),
 	        id INTEGER NOT NULL,
 	        teamId INTEGER REFERENCES team(id),
-	        championId INTEGER,
+	        championId INTEGER REFERENCES(championId),
 	        champLevel INTEGER,
 	        role TEXT,
 	        lane TEXT,
@@ -54,7 +54,8 @@ try:
 			totalPercentRuneAp REAL,
 			totalFlatMasteryAp REAL,
 			totalPercentMasteryAp REAL,
-			totalAp REAL
+			totalAp REAL,
+			PRIMARY KEY (matchId, id)
 	        )''')
     c.execute('''CREATE TABLE participantItem (
     		matchId INTEGER,
@@ -73,6 +74,7 @@ try:
 	    	participantId INTEGER,
 	    	masteryId INTEGER REFERENCES mastery(id),
 	    	rank INTEGER,
+	    	PRIMARY KEY (matchId, participantId, masteryId),
 	    	FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id)
     	)''')
     c.execute('''CREATE TABLE participantRune (

@@ -1,0 +1,37 @@
+.chart {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.chart .bar {
+    transition: fill .4s ease;
+}
+
+.chart .bar-left {
+    fill: cadetblue;
+}
+
+.chart .bar-left:hover {
+    fill: steelblue;
+}
+
+.chart .bar-right {
+    fill: indianred;
+}
+
+.chart .bar-right:hover {
+    fill: crimson;
+}
+
+.chart text {
+    fill: white;
+}
+
+.chart .category-label {
+    font: 40px sans-serif;
+    text-anchor: middle;
+    transition: fill .4s ease;
+}
+
+.chart .category-label:hover {
+    fill: cornsilk;
+}

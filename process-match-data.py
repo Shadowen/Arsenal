@@ -322,7 +322,7 @@ try:
 			role TEXT,
 			lane TEXT,
 			buildType TEXT,
-			wins INTEGER,
+			winRate INTEGER,
 			kills INTEGER,
 			deaths INTEGER,
 			assists INTEGER,
@@ -334,12 +334,12 @@ try:
 			damageDealtToChampions INTEGER,
 			magicDamageDealt INTEGER,
 			magicDamageDealtToChampions INTEGER,
-			totalAp REAL,
+			avgTotalAp REAL,
 			FOREIGN KEY (version, championId) REFERENCES champion(version, id)
 		)''')
-	c.execute('''INSERT INTO championStat (version, championId, wins, picks, kills, deaths, assists, assassinations, firstBloodKillOrAssist,
-		firstTowerKillOrAssist, totalTimeCrowdControlDealt, damageDealt, damageDealtToChampions, magicDamageDealt, magicDamageDealtToChampions, totalAp)
-			SELECT match.version, participant.championId, TOTAL(team.winner), TOTAL(participant.id), AVG(participant.kills), AVG(participant.deaths),
+	c.execute('''INSERT INTO championStat (version, championId, winRate, picks, kills, deaths, assists, assassinations, firstBloodKillOrAssist,
+		firstTowerKillOrAssist, totalTimeCrowdControlDealt, damageDealt, damageDealtToChampions, magicDamageDealt, magicDamageDealtToChampions, avgTotalAp)
+			SELECT match.version, participant.championId, AVG(team.winner), COUNT(*), AVG(participant.kills), AVG(participant.deaths),
 			AVG(participant.assists), AVG(participant.assassinations), AVG(participant.firstBloodKill + participant.firstBloodAssist),
 			AVG(participant.firstTowerKill + participant.firstTowerAssist), AVG(participant.totalTimeCrowdControlDealt), AVG(participant.damageDealt),
 			AVG(participant.damageDealtToChampions), AVG(participant.magicDamageDealt), AVG(participant.magicDamageDealtToChampions),
@@ -364,18 +364,21 @@ try:
 			goldThreshold REAL,
 			FOREIGN KEY (version, itemId) REFERENCES item(version, id)
 		)''')
-	c.execute('''INSERT INTO itemStat (version, itemId, timesBought, winRate, goldThreshold)
-			SELECT match.version, participantItem.itemId, COUNT(*), AVG(team.winner), AVG(participantItem.goldThreshold)
+	c.execute('''INSERT INTO itemStat (version, itemId, timesBought, goldThreshold)
+			SELECT match.version, participantItem.itemId, COUNT(*), AVG(participantItem.goldThreshold)
 			FROM participant
 			LEFT JOIN participantItem ON participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
 			LEFT JOIN match ON participant.matchId = match.id
 			LEFT JOIN team ON participant.matchId = team.matchId AND participant.teamId = team.id
 			GROUP BY match.version, participantItem.itemId''', ())
-	c.execute('''UPDATE championStat
-		SET bans = (SELECT COUNT(*)
-			FROM ban
-			LEFT JOIN match ON ban.matchId = match.id
-			WHERE championStat.version = match.version AND championStat.championId = ban.championId
+	c.execute('''UPDATE itemStat
+		SET winRate = (SELECT AVG(team.winner)
+			FROM participant
+			LEFT JOIN match ON participant.matchId = match.id
+			LEFT JOIN team ON match.id = team.matchId AND participant.teamId = team.id
+			LEFT JOIN participantItem ON match.id = participantItem.matchId AND participant.id = participantItem.participantId
+			WHERE itemStat.version = match.version AND itemStat.itemId = participantItem.itemId
+			GROUP BY participant.id
 			)''')
 
 	# Player stats
@@ -391,7 +394,7 @@ try:
 		FROM player
 		LEFT JOIN participant ON player.id = participant.playerId
 		LEFT JOIN match ON participant.matchId = match.id
-		GROUP BY player.id, participant.championId, match.version
+		GROUP BY player.id, participant.championId
 		''')
 	c.execute('''CREATE TABLE playerItem (
 		playerId INTEGER REFERENCES player(id),
@@ -406,7 +409,7 @@ try:
 		LEFT JOIN participant ON player.id = participant.playerId
 		LEFT JOIN participantItem ON participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
 		LEFT JOIN match ON participant.matchId = match.id
-		GROUP BY player.id, participantItem.itemId, match.version
+		GROUP BY player.id, match.version, participantItem.itemId
 		''')
 	c.execute('''CREATE TABLE playerStat (
 		playerId INTEGER REFERENCES player(id),
@@ -420,7 +423,7 @@ try:
 		FROM player
 		LEFT JOIN participant ON player.id = participant.playerId
 		LEFT JOIN match ON participant.matchId = match.id
-		GROUP BY player.id, match.version
+		GROUP BY match.version, player.id
 		''')
 	c.execute('''UPDATE playerStat
 		SET
