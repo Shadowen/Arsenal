@@ -25,15 +25,12 @@
     <script>
     var data = [{
         title: "ABC",
-        group: "One",
         values: [0, 6]
     }, {
         title: "B",
-        group: "One",
         values: [1, 5]
     }, {
         title: "C",
-        group: "Two",
         values: [2, 4]
     }];
 
@@ -43,46 +40,51 @@
     var barHeight = 40;
     var barSpacing = 10;
 
-    var width = 320;
+    var width = 640;
     var height = data.length * barHeight;
 
     var halfWidth = width / 2;
+    var xScale = d3.scale.linear()
+        .domain([0, d3.max(data.map(function(d) {
+            return d3.max(d.values);
+        }))])
+        .range([0, halfWidth - centerOffset]);
 
     var chart = d3.select('.chart')
         .attr("width", width)
         .attr("height", height);
 
-    var row = chart
-        .selectAll("g")
+    var row = chart.selectAll("g")
         .data(data)
         .enter()
-        .append("g");
+        .append("g")
+        .attr('transform', function(d, i) {
+            return 'translate(0, ' + barHeight * i + ')';
+        });
 
     var leftBar = row
         .append("rect")
         .classed('bar-left', true)
-        .attr('x', function(d, i, a) {
-            return halfWidth - (d.values[a]) - centerOffset;
+        .attr('x', function(d) {
+            return halfWidth - xScale(d.values[0]) - centerOffset;
+        })
+        .attr('width', function(d, i, a) {
+            return xScale(d.values[0]);
         });
     var rightBar = row
         .append("rect")
         .classed('bar-right', true)
-        .attr('x', halfWidth + centerOffset);
+        .attr('x', halfWidth + centerOffset)
+        .attr('width', function(d, i, a) {
+            return xScale(d.values[1]);
+        });
     var bars = leftBar.union(rightBar)
         .classed('bar', true)
-        .attr('width', function(d, i, a) {
-            return (d.values[a]);
-        })
-        .attr('height', barHeight - barSpacing)
-        .attr('y', function(d, i, a) {
-            return i * barHeight;
-        });
+        .attr('height', barHeight - barSpacing);
     var categoryLabel = row.append('text')
         .classed('category-label', true)
         .attr("x", halfWidth)
-        .attr("y", function(d, i, a) {
-            return (i + 0.5) * barHeight;
-        })
+        .attr('y', barHeight / 2)
         .attr("dy", ".35em")
         .text(function(d, i, a) {
             return d.title;
