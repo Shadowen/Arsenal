@@ -2,15 +2,24 @@
     background-color: rgba(0, 0, 0, 0.5);
 }
 
-.chart .bar {
+.chart .row {
     transition: fill .4s ease;
+    fill: grey;
+}
+
+.chart .row:hover {
+    fill: lightgrey;
+}
+
+.chart .bar {
+    pointer-events: none;
 }
 
 .chart .bar-left {
     fill: cadetblue;
 }
 
-.chart .bar-left:hover {
+.chart .bar-left.emphasis {
     fill: steelblue;
 }
 
@@ -18,20 +27,21 @@
     fill: indianred;
 }
 
-.chart .bar-right:hover {
+.chart .bar-right.emphasis {
     fill: crimson;
+}
+
+.chart .title {
+    font: 60px sans-serif;
 }
 
 .chart text {
     fill: white;
+    pointer-events: none;
 }
 
 .chart .category-label {
     font: 40px sans-serif;
     text-anchor: middle;
     transition: fill .4s ease;
-}
-
-.chart .category-label:hover {
-    fill: cornsilk;
 }
