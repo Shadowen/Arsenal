@@ -36,7 +36,7 @@
     font: 60px sans-serif;
 }
 
-.chart text {
+.chart :not(a) text {
     fill: white;
     pointer-events: none;
 }

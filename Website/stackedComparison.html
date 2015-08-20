@@ -39,87 +39,183 @@
         var height = 480;
 
         var centerSpacing = 100;
+        var titleHeight = 60;
+        var titleMargin = 20;
 
         var boxWidth = 60;
-        var yScale = d3.scale.linear()
-            .domain([0, data.map(function(d) {
-                return d3.max(d.values);
-            }).reduce(function(prev, cur) {
-                return prev + cur;
-            }, 0)])
-            .range([0, height]);
+
         var svg = parent
             .append('svg')
             .classed('chart', true)
             .attr("width", width)
             .attr("height", height);
-        var rowEnter = svg.selectAll('g')
-            .data(data)
-            .enter();
-        var row = rowEnter
-            .append('g')
-            .attr('transform', function(d, i) {
-                var yOffset = data.slice(0, i).map(function(o) {
-                    return yScale(d3.max(o.values));
+        var titleElement = svg.append('text')
+            .classed('title', true)
+            .attr('x', width / 2)
+            .attr('y', titleHeight)
+            .style('text-anchor', 'middle')
+            .text(title);
+
+        var chartArea = svg.append('g')
+            .attr('width', width)
+            .attr('height', height - titleHeight - titleMargin)
+            .attr('transform', 'translate(0, ' + (titleHeight + titleMargin) + ')');
+
+        var update = function() {
+            var yScale = d3.scale.linear()
+                .domain([0, data.map(function(d) {
+                    return d3.max(d.values);
                 }).reduce(function(prev, cur) {
                     return prev + cur;
-                }, 0) + yScale(d3.max(d.values)) / 2;
-                return 'translate(' + (width / 2) + ', ' + yOffset + ')'
-            }).on('mouseover', function(d, i, a) {
-                d3.selectAll(this.childNodes)
-                    .classed('active', true);
-            })
-            .on('mouseout', function(d, i, a) {
-                d3.selectAll(this.childNodes)
-                    .classed('active', false);
-            });
-        var line = row
-            .append('polyline')
-            .classed('center-fill', true)
-            .attr('points', function(d) {
-                var points = [
-                    [-centerSpacing, -yScale(d.values[0]) / 2],
-                    [centerSpacing, -yScale(d.values[1]) / 2],
-                    [centerSpacing, yScale(d.values[1]) / 2],
-                    [-centerSpacing, yScale(d.values[0]) / 2]
-                ];
-                return points.map(function(point) {
-                    return point.join(' ');
-                }).join(', ');
+                }, 0)])
+                .range([0, +chartArea.attr('height')]);
+            var scaledData = data.map(function(d) {
+                return {
+                    title: d.title,
+                    values: d.values.map(function(v) {
+                        return yScale(v);
+                    })
+                };
             });
 
-        var boxEnter = row.selectAll('rect')
-            .data(function(d) {
-                return d.values;
-            })
-            .enter();
-        var box = boxEnter
+            var rowUpdate = chartArea.selectAll('g')
+                .data(scaledData);
+            var row = rowUpdate.enter()
+                .append('g')
+                .attr('transform', function(d) {
+                    var transform = 'translate(' + (width / 2) + ', ' + height + ')'
+                    return transform;
+                })
+                .on('mouseover', function(d, i, a) {
+                    d3.selectAll(this.childNodes)
+                        .classed('active', true);
+                })
+                .on('mouseout', function(d, i, a) {
+                    d3.selectAll(this.childNodes)
+                        .classed('active', false);
+                });
+            rowUpdate.yOffset = 0;
+            rowUpdate
+                .transition()
+                .duration(500)
+                .attr('transform', function(d) {
+                    rowUpdate.yOffset += d3.max(d.values) / 2
+                    var transform = 'translate(' + (width / 2) + ', ' + rowUpdate.yOffset + ')'
+                    rowUpdate.yOffset += d3.max(d.values) / 2;
+                    return transform;
+                });
+            rowUpdate.exit()
+                .transition()
+                .remove();
+            var line = row
+                .append('polygon')
+                .classed('center-fill', true)
+                .attr('points', function(d) {
+                    var points = [
+                        [-centerSpacing, 0],
+                        [centerSpacing, 0],
+                        [centerSpacing, 0],
+                        [-centerSpacing, 0]
+                    ];
+                    return points.map(function(point) {
+                        return point.join(' ');
+                    }).join(', ');
+                })
+            rowUpdate.select('polygon')
+                .transition()
+                .duration(500)
+                .attr('points', function(d) {
+                    var points = [
+                        [-centerSpacing, -d.values[0] / 2],
+                        [centerSpacing, -d.values[1] / 2],
+                        [centerSpacing, d.values[1] / 2],
+                        [-centerSpacing, d.values[0] / 2]
+                    ];
+                    return points.map(function(point) {
+                        return point.join(' ');
+                    }).join(', ');
+                });
+            rowUpdate.exit().
+            select('polygon')
+                .transition()
+                .attr('points', function(d) {
+                    var points = [
+                        [-centerSpacing, 0],
+                        [centerSpacing, 0],
+                        [centerSpacing, 0],
+                        [-centerSpacing, 0]
+                    ];
+                    return points.map(function(point) {
+                        return point.join(' ');
+                    }).join(', ');
+                })
+                .remove();
+            var boxUpdate = rowUpdate.selectAll('rect')
+                .data(function(d) {
+                    return d.values;
+                });
+            var box = boxUpdate.enter()
+                .append('rect')
+                .classed('box', true)
+                .classed('box-left', function(d, i) {
+                    return !i;
+                })
+                .classed('box-right', function(d, i) {
+                    return !!i;
+                })
+                .attr('width', boxWidth)
+                .attr('height', 0)
+                .attr('x', function(d, i, a) {
+                    if (!i) {
+                        // Left side
+                        return -centerSpacing - boxWidth;
+                    }
+                    // Right side
+                    return centerSpacing;
+                });
+            boxUpdate
+                .transition()
+                .duration(500)
+                .attr('height', function(d) {
+                    return d;
+                })
+                .attr('transform', function(d) {
+                    return 'translate(0, ' + -d / 2 + ')';
+                });
+            rowUpdate.exit().selectAll('g g rect')
+                .transition()
+                .attr('height', function(d) {
+                    return 0;
+                })
+                .attr('transform', function(d) {
+                    return 'translate(0, 0)';
+                })
+                .remove();
+        }
+        var updateButton = svg.append('a')
+            .attr('xlink:href', '#')
+            .on('click', update)
+            .attr('transform', 'translate(' + (width - 100) + ',' + 40 + ')');
+        updateButton
             .append('rect')
-            .classed('box', true)
-            .classed('box-left', function(d, i) {
-                return !i;
-            })
-            .classed('box-right', function(d, i) {
-                return !!i;
-            })
-            .attr('width', boxWidth)
-            .attr('height', function(d) {
-                return yScale(d);
-            })
-            .attr('transform', function(d) {
-                return 'translate(0, ' + yScale(-d / 2) + ')';
-            })
-            .attr('x', function(d, i, a) {
-                if (!i) {
-                    // Left side
-                    return -centerSpacing - boxWidth;
-                }
-                // Right side
-                return centerSpacing;
-            });
+            .attr('width', 80)
+            .attr('height', 20)
+            .attr('fill', 'white')
+            .attr('x', -5)
+            .attr('y', -15)
+            .attr('rx', 5)
+            .attr('ry', 5);
+        updateButton
+            .append('text')
+            .text('button text')
+
+        update();
     };
 
     d3.select('body').call(createStackedComparison);
+
+    data.pop()
+    data.pop()
     </script>
 </body>
 
