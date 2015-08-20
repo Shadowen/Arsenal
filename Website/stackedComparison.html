@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src='/js/d3.min.js'></script>
+    <script>
+    d3.selection.prototype.union = function(that) {
+        if (that instanceof d3.selection) {
+            var newselection = d3.select(null); //ensure the correct prototype
+            newselection.splice(0, 1); //empty the selection      
+            [].push.apply(newselection, this); //push in this selection, without loosing the prototype 
+            [].push.apply(newselection, that); //push in that selection, without loosing the prototype
+            return newselection;
+        } else {
+            throw new Error("Can only union with another d3 selection");
+        }
+    };
+    </script>
+    <link rel='stylesheet' type='text/css' href='/css/stacked.css'>
+</head>
+
+<body>
+    <script>
+    var title = 'Data set';
+    var data = [{
+        title: "ABC",
+        values: [32314, 100000]
+    }, {
+        title: "B",
+        values: [112394, 50000]
+    }, {
+        title: "C",
+        values: [2433, 12310]
+    }];
+
+
+    var createStackedComparison = function(parent) {
+        var width = 640;
+        var height = 480;
+
+        var centerSpacing = 100;
+
+        var boxWidth = 60;
+        var yScale = d3.scale.linear()
+            .domain([0, data.map(function(d) {
+                return d3.max(d.values);
+            }).reduce(function(prev, cur) {
+                return prev + cur;
+            }, 0)])
+            .range([0, height]);
+        var svg = parent
+            .append('svg')
+            .classed('chart', true)
+            .attr("width", width)
+            .attr("height", height);
+        var rowEnter = svg.selectAll('g')
+            .data(data)
+            .enter();
+        var row = rowEnter
+            .append('g')
+            .attr('transform', function(d, i) {
+                var yOffset = data.slice(0, i).map(function(o) {
+                    return yScale(d3.max(o.values));
+                }).reduce(function(prev, cur) {
+                    return prev + cur;
+                }, 0) + yScale(d3.max(d.values)) / 2;
+                return 'translate(' + (width / 2) + ', ' + yOffset + ')'
+            }).on('mouseover', function(d, i, a) {
+                d3.selectAll(this.childNodes)
+                    .classed('active', true);
+            })
+            .on('mouseout', function(d, i, a) {
+                d3.selectAll(this.childNodes)
+                    .classed('active', false);
+            });
+        var line = row
+            .append('polyline')
+            .classed('center-fill', true)
+            .attr('points', function(d) {
+                var points = [
+                    [-centerSpacing, -yScale(d.values[0]) / 2],
+                    [centerSpacing, -yScale(d.values[1]) / 2],
+                    [centerSpacing, yScale(d.values[1]) / 2],
+                    [-centerSpacing, yScale(d.values[0]) / 2]
+                ];
+                return points.map(function(point) {
+                    return point.join(' ');
+                }).join(', ');
+            });
+
+        var boxEnter = row.selectAll('rect')
+            .data(function(d) {
+                return d.values;
+            })
+            .enter();
+        var box = boxEnter
+            .append('rect')
+            .classed('box', true)
+            .classed('box-left', function(d, i) {
+                return !i;
+            })
+            .classed('box-right', function(d, i) {
+                return !!i;
+            })
+            .attr('width', boxWidth)
+            .attr('height', function(d) {
+                return yScale(d);
+            })
+            .attr('transform', function(d) {
+                return 'translate(0, ' + yScale(-d / 2) + ')';
+            })
+            .attr('x', function(d, i, a) {
+                if (!i) {
+                    // Left side
+                    return -centerSpacing - boxWidth;
+                }
+                // Right side
+                return centerSpacing;
+            });
+    };
+
+    d3.select('body').call(createStackedComparison);
+    </script>
+</body>
+
+</html>

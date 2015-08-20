@@ -1,0 +1,48 @@
+.chart {
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.chart .row {
+    transition: fill .4s ease;
+    fill: grey;
+}
+
+.chart .box-left {
+    fill: rgba(95, 158, 168, 0.7);
+}
+
+.chart .box-left.active {
+    fill: rgba(95,158,168, 0.9);
+}
+
+.chart .box-right {
+    fill: indianred;
+}
+
+.chart .box-right.active {
+    fill: crimson;
+}
+
+.chart .center-fill {
+    fill: rgba(0, 0, 200, 0.2);
+    stroke: rgba(0, 0, 200, 0.5);
+}
+.chart .center-fill.active{
+    fill:rgba(0,0,200,0.4);
+    stroke: rgba(0, 0, 200, 0.7);
+}
+
+.chart .title {
+    font: 60px sans-serif;
+}
+
+.chart text {
+    fill: white;
+    pointer-events: none;
+}
+
+.chart .category-label {
+    font: 40px sans-serif;
+    text-anchor: middle;
+    transition: fill .4s ease;
+}
