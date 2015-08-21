@@ -21,6 +21,10 @@ try:
 except:
 	traceback.print_exc()
 try:
+	c.execute('''DROP VIEW itemPurchaseDestroy''')
+except:
+	traceback.print_exc()
+try:
 	c.execute('''DROP VIEW participantItemStatic''')
 except:
 	traceback.print_exc()

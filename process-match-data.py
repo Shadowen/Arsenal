@@ -22,87 +22,128 @@ try:
 		SELECT match.*, participant.*
 		FROM participant
 		LEFT JOIN match ON participant.matchId = match.id;''')
-	c.execute('''CREATE VIEW eventItem AS
-		SELECT matchId,
-			   type,
-			   timestamp,
-			   item.name
-		  FROM event
-			   LEFT JOIN
-			   [match] ON event.matchId = [match].id
-			   LEFT JOIN
-			   item ON [match].version = item.version AND 
-					   event.itemId = item.id
-		 ORDER BY timestamp;''')
+	c.execute('''SELECT matchId,
+		participantId,
+		timestamp,
+		type,
+		itemId,
+		itemBefore,
+		itemAfter,
+		item.name AS itemName
+	FROM event
+		LEFT JOIN
+		[match] ON event.matchId = [match].id
+		LEFT JOIN
+		item ON [match].version = item.version AND 
+				event.itemId = item.id
+	WHERE event.type = "ITEM_PURCHASED" OR 
+		event.type = "ITEM_DESTROYED" OR 
+		event.type = "ITEM_SOLD" OR 
+		event.type = "ITEM_UNDO"
+	ORDER BY timestamp''')
 	c.execute('''CREATE VIEW participantItemStatic AS
 		SELECT matchId,
-			   participantId,
-			   itemId,
-			   name,
-			   flatAp
-		  FROM participantItem
-			   LEFT JOIN
-			   [match] ON participantItem.matchId = [match].id
-			   LEFT JOIN
-			   item ON [match].version = item.version AND 
-					   participantItem.itemId = item.id''')
-	# Items bought
-	c.execute('''SELECT matchId, id FROM participant''')
-	for (matchId, participantId) in c.fetchall():
-		c.execute('''SELECT event.type,
-							event.timestamp,
-							event.itemId,
-							event.itemBefore,
-							event.itemAfter,
-							participantFrame.totalGold
+				participantId,
+				itemId,
+				name,
+				flatAp
+			FROM participantItem
+				LEFT JOIN
+				[match] ON participantItem.matchId = [match].id
+				LEFT JOIN
+				item ON [match].version = item.version AND 
+						participantItem.itemId = item.id''')
+	c.execute('''CREATE VIEW eventItem AS
+					SELECT event.matchId,
+						event.participantId,
+						event.timestamp,
+						event.type,
+						event.itemId,
+						event.itemBefore,
+						event.itemAfter,
+						participantFrame.totalGold
 					FROM event
-							LEFT JOIN
-							[match] ON event.matchId = [match].id
-							LEFT JOIN
-							participantFrame ON [match].id = participantFrame.matchId AND 
-												event.frameTimestamp = participantFrame.timestamp AND 
-												event.participantId = participantFrame.participantId
-							LEFT JOIN
-							item ON [match].version = item.version AND 
-									event.itemId = item.id
-					WHERE [match].id = ? AND 
-							event.participantId = ? AND 
-							(event.type = "ITEM_PURCHASED" OR 
-							event.type = "ITEM_DESTROYED" OR 
-							event.type = "ITEM_SOLD" OR
-							event.type = "ITEM_UNDO") 
-					ORDER BY event.timestamp,
-							CASE event.type WHEN "ITEM_PURCHASED" THEN 0 END DESC;''',
-			(matchId, participantId))
+						LEFT JOIN
+						participantFrame ON event.matchId = participantFrame.matchId AND 
+											event.frameTimestamp = participantFrame.timestamp AND 
+											event.participantId = participantFrame.participantId
+					WHERE event.type = 'ITEM_PURCHASED' OR 
+						event.type = 'ITEM_DESTROYED' OR 
+						event.type = 'ITEM_SOLD' OR 
+						event.type = 'ITEM_UNDO'
+					ORDER BY event.timestamp''')
+	# c.execute('''CREATE VIEW itemPurchaseDestroy AS
+	# 	SELECT purchase.matchId,
+	# 		purchase.participantId,
+	# 		purchase.timestamp,
+	# 		purchase.itemId AS itemBought,
+	# 		destroy.itemId AS itemDestroyed
+	# 	FROM (
+	# 			SELECT matchId,
+	# 					participantId,
+	# 					timestamp,
+	# 					itemId
+	# 				FROM eventItem
+	# 				WHERE type = "ITEM_PURCHASED"
+	# 		)
+	# 		AS purchase
+	# 		JOIN
+	# 		(
+	# 			SELECT matchId,
+	# 					participantId,
+	# 					timestamp,
+	# 					itemId
+	# 				FROM eventItem
+	# 				WHERE type = "ITEM_DESTROYED" OR 
+	# 					type = "ITEM_SOLD"
+	# 		)
+	# 		AS destroy ON purchase.matchId = destroy.matchId AND 
+	# 					purchase.participantId = destroy.participantId AND 
+	# 					purchase.timestamp = destroy.timestamp''')
+	# Items bought
+	c.execute('''SELECT matchId, id FROM participant;''')
+	for (matchId, participantId) in c.fetchall():
+		c.execute('''SELECT timestamp, type, itemId, itemBefore, itemAfter, totalGold
+			FROM eventItem
+			WHERE matchId = ? AND participantId = ?;''', (matchId, participantId))
+		events = c.fetchall()
 		items = []
-		for (eventType, timestamp, itemId, itemBefore, itemAfter, goldThreshold) in c.fetchall():
-			## TODO boot enchantments
-			# SELECT event.timestamp,
-			#        event.type,
-			#        event.itemId,
-			#        event.itemBefore,
-			#        event.itemAfter,
-			#        item.name
-			#   FROM event
-			#        LEFT JOIN
-			#        [match] ON event.matchId = [match].id
-			#        LEFT JOIN
-			#        item ON [match].version = item.version AND 
-			#                event.itemId = item.id
-			#  WHERE matchId = 1900729148 AND 
-			#        participantId = 1
-			#  ORDER BY event.timestamp;
+		print(matchId, participantId)
+		for (idx, (timestamp, eventType, itemId, itemBefore, itemAfter, goldThreshold)) in enumerate(events):
+			item = itemId
+			if item == None or item=="NULL":
+				item = itemBefore
+			if item == None or item == 0:
+				item = itemAfter
+			print(eventType, item)
 			if eventType == 'ITEM_PURCHASED':
-				items.append((itemId, timestamp, goldThreshold))
+				items.append((item, timestamp, goldThreshold))
 			elif eventType == 'ITEM_DESTROYED' or eventType == 'ITEM_SOLD':
-				currentItemIds = zip(*items).__next__()
-				if itemId in currentItemIds:
-					items.pop(currentItemIds.index(itemId))
+				items.pop(list(zip(*items))[0].index(item))
 			elif eventType == 'ITEM_UNDO':
-				if itemBefore != 0:
-					items.pop(zip(*items).__next__().index(itemBefore))
-				if itemAfter != 0:
-					items.append((itemAfter, timestamp, goldThreshold))
+				originalTime = -1
+				itemBuy = False
+				for (timestamp, eventType, itemId, ib, ia, goldThreshold) in events[idx - 1::-1]:
+					if timestamp < originalTime:
+						break
+					elif itemId == item:
+						if eventType == 'ITEM_PURCHASED':
+							# Undo a buy
+							items.pop(list(zip(*items))[0].index(itemId))
+							originalTime = timestamp
+						else:
+							# Undo a sell
+							items.append((itemId, timestamp, goldThreshold))
+							break
+					elif originalTime > 0 and eventType == 'ITEM_DESTROYED':
+						# Undo buy side effects
+						items.append((itemId, timestamp, goldThreshold))
+			if len(items) > 0:
+				print(list(zip(*items))[0])
+		if len(items) > 7:
+			print('Participant #{} in match {} has too many items!'.format(participantId, matchId))
+			print(list(zip(*items))[0])
+			raise "Error"
 		for (itemId, timeBought, goldThreshold) in items:
 			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, goldThreshold)
 				VALUES (?, ?, ?, ?, ?)''',

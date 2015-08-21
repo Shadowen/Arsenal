@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src='/js/d3.min.js'></script>
+    <script>
+    d3.selection.prototype.union = function(that) {
+        if (that instanceof d3.selection) {
+            var newselection = d3.select(null); //ensure the correct prototype
+            newselection.splice(0, 1); //empty the selection      
+            [].push.apply(newselection, this); //push in this selection, without loosing the prototype 
+            [].push.apply(newselection, that); //push in that selection, without loosing the prototype
+            return newselection;
+        } else {
+            throw new Error("Can only union with another d3 selection");
+        }
+    };
+    </script>
+    <link rel='stylesheet' type='text/css' href='/css/stacked.css'>
+</head>
+
+<body>
+    <svg width=1000 height=1000>
+    </svg>
+    <script>
+    var data = [{radius:[20,10]}, {radius:[20,20]},{radius:[15,20]}];
+
+
+    var svg = d3.select('svg');
+
+    function update() {
+        var circle = svg.selectAll("circle")
+            .data(data);
+
+        circle.exit().remove();
+
+        circle.enter().append("circle")
+
+        circle.transition().attr("r", function(d) {
+                return d.radius[0];
+            })
+            .attr("cx", function(d, i) {
+                return 100 + i * 100;
+            })
+            .attr("cy", function(d) {
+                return 100;
+            });
+    }
+    update();
+    </script>
+</body>
+
+</html>

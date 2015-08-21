@@ -30,7 +30,7 @@ try:
 	        playerId INTEGER REFERENCES player(id),
 	        id INTEGER NOT NULL,
 	        teamId INTEGER REFERENCES team(id),
-	        championId INTEGER REFERENCES(championId),
+	        championId INTEGER REFERENCES champion(id),
 	        champLevel INTEGER,
 	        role TEXT,
 	        lane TEXT,
@@ -65,7 +65,7 @@ try:
     c.execute('''CREATE TABLE participantItem (
     		matchId INTEGER,
     		participantId INTEGER,
-    		itemId INTEGER REFERENCES item(id),
+    		itemId INTEGER,
     		timeBought INTEGER,
     		finalStacks INTEGER,
     		maxStacks INTEGER,
