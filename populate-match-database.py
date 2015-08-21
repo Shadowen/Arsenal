@@ -74,13 +74,15 @@ for matchSet in files:
                 for participant in data['participants']:
                     participantId = participant['participantId']
                     c.execute('''INSERT INTO participant (matchId, id, teamId, championId, champLevel, role, lane, kills, deaths, assists, damageDealt, damageDealtToChampions,
-                        magicDamageDealt, magicDamageDealtToChampions, firstBloodKill, firstBloodAssist, firstTowerKill, firstTowerAssist, totalTimeCrowdControlDealt)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                        physicalDamageDealt, physicalDamageDealtToChampions, magicDamageDealt, magicDamageDealtToChampions, trueDamageDealt, trueDamageDealtToChampions, firstBloodKill,
+                        firstBloodAssist, firstTowerKill, firstTowerAssist, totalTimeCrowdControlDealt)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                         (matchId, participantId, participant['teamId'], participant['championId'], participant['stats']['champLevel'], participant['timeline']['role'], participant['timeline']['lane'],
                             participant['stats']['kills'], participant['stats']['deaths'], participant['stats']['assists'], participant['stats']['totalDamageDealt'],
-                        participant['stats']['totalDamageDealtToChampions'], participant['stats']['magicDamageDealt'], participant['stats']['magicDamageDealtToChampions'],
-                        participant['stats']['firstBloodKill'], participant['stats']['firstBloodAssist'], participant['stats']['firstTowerKill'],
-                        participant['stats']['firstTowerAssist'], participant['stats']['totalTimeCrowdControlDealt']))
+                        participant['stats']['totalDamageDealtToChampions'], participant['stats']['physicalDamageDealt'], participant['stats']['physicalDamageDealtToChampions'],
+                        participant['stats']['magicDamageDealt'], participant['stats']['magicDamageDealtToChampions'], participant['stats']['trueDamageDealt'], participant['stats']['trueDamageDealtToChampions'],
+                        participant['stats']['firstBloodKill'], participant['stats']['firstBloodAssist'], participant['stats']['firstTowerKill'], participant['stats']['firstTowerAssist'],
+                        participant['stats']['totalTimeCrowdControlDealt']))
                     for mastery in participant.get('masteries', []):
                         c.execute('''INSERT INTO participantMastery (matchId, participantId, masteryId, rank) VALUES (?, ?, ?, ?)''',
                             (matchId, participantId, mastery['masteryId'], mastery['rank']))

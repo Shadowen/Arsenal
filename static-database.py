@@ -73,6 +73,9 @@ def populateStaticTables(version):
     try: 
         r = http.request(
             'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/champion?version={}&api_key={}'.format(version, apiKey))
+        if r.status != 200:
+            print('HTTP request failed:' + str(r.status))
+            raise Exception
         responseData = json.loads(r.data.decode("utf-8"))
         for championKey, champion in responseData["data"].items():
             c.execute('''INSERT INTO champion (version, id, name, title) VALUES (?, ?, ?, ?)''',
@@ -85,6 +88,9 @@ def populateStaticTables(version):
     try: 
         r = http.request(
             'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/item?version={}&itemListData=gold,image,stats&api_key={}'.format(version, apiKey))
+        if r.status != 200:
+            print('HTTP request failed:' + str(r.status))
+            raise Exception
         responseData = json.loads(r.data.decode("utf-8"))
         for itemId, item in responseData["data"].items():
             c.execute('''INSERT INTO item (id, name, version, flatAp, percentAp, gold) VALUES (?, ?, ?, ?, ?, ?)''',
@@ -100,6 +106,9 @@ def populateStaticTables(version):
     try:
         r = http.request(
             'GET', 'https://global.api.pvp.net/api/lol/static-data/na/v1.2/rune?version={}&runeListData=stats&api_key={}'.format(version, apiKey))
+        if r.status != 200:
+            print('HTTP request failed:' + str(r.status))
+            raise Exception
         responseData = json.loads(r.data.decode("utf-8"))
         for runeId, rune in responseData["data"].items():
             c.execute('INSERT INTO rune (id, name, version, flatAp, percentAp) VALUES (?, ?, ?, ?, ?)', (rune["id"], rune[

@@ -99,14 +99,15 @@ try:
 				if itemId in currentItemIds:
 					items.pop(currentItemIds.index(itemId))
 			elif eventType == 'ITEM_UNDO':
-				if (itemBefore != 0):
+				if itemBefore != 0:
 					items.pop(zip(*items).__next__().index(itemBefore))
-				items.append((itemAfter, timestamp, goldThreshold))
+				if itemAfter != 0:
+					items.append((itemAfter, timestamp, goldThreshold))
 		for (itemId, timeBought, goldThreshold) in items:
 			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, goldThreshold)
 				VALUES (?, ?, ?, ?, ?)''',
 				(matchId, participantId, itemId, timeBought, goldThreshold))
-	print('Items bought.')
+	print('Final items determined')
 	# Resolve stacks
 	# RoA
 	c.execute('''SELECT matchId, participantId, timeBought
@@ -312,6 +313,22 @@ try:
 			(buildType, matchId, participantId))
 	print('Build types analyzed')
 
+	# Solo Kills
+	c.execute('''UPDATE participant
+				SET soloKills = (
+					SELECT COUNT() 
+						FROM event
+							LEFT JOIN
+							[match] ON event.matchId = [match].id
+							LEFT JOIN
+							assist ON assist.matchId = event.matchId AND 
+									assist.eventId = event.id
+						WHERE type = "CHAMPION_KILL" AND 
+							assist.participantId IS NULL AND 
+							[match].id = participant.matchId AND 
+							event.killerId = participant.id);''')
+	print('Solo kills counted')
+
 	# Champion stats
 	c.execute('''CREATE TABLE championStat (
 			version TEXT,
@@ -354,6 +371,7 @@ try:
 			LEFT JOIN match ON ban.matchId = match.id
 			WHERE championStat.version = match.version AND championStat.championId = ban.championId
 			)''')
+	print('Champion power determined')
 
 	# Item stats
 	c.execute('''CREATE TABLE itemStat (
@@ -380,6 +398,7 @@ try:
 			WHERE itemStat.version = match.version AND itemStat.itemId = participantItem.itemId
 			GROUP BY participant.id
 			)''')
+	print('Item efficiency analysis complete')
 
 	# Player stats
 	c.execute('''CREATE TABLE playerChampion (
@@ -442,6 +461,28 @@ try:
 				WHERE playerStat.playerId = player.id AND playerStat.version = match.version AND participant.buildType = "AD"
 			)
 		''')
+	print('Player profiling complete')
+
+	# Item cross join
+	c.execute('''SELECT m1.version,
+		item1.itemId AS i1,
+		item2.itemId AS i2,
+		COUNT()
+	FROM participantItem AS item1
+		LEFT JOIN
+		[match] AS m1 ON item1.matchId = m1.id
+		CROSS JOIN
+		participantItem AS item2 ON item1.matchId = item2.matchId AND
+									item1.participantId = item2.participantId
+		LEFT JOIN
+		[match] AS m2 ON item2.matchId = m2.id
+	WHERE m1.version = m2.version AND
+		item1.rowid != item2.rowid
+	GROUP BY m1.version,
+			i1,
+			i2;
+''')
+	print('Item correlations cross-referenced')
 except:
 	traceback.print_exc()
 
