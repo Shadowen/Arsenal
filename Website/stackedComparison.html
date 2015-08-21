@@ -44,6 +44,11 @@
 
         var boxWidth = 60;
 
+        var exploded = "exploded";
+        var stacked = "stacked";
+        var mode = stacked;
+
+
         var svg = parent
             .append('svg')
             .classed('chart', true)
@@ -62,135 +67,274 @@
             .attr('transform', 'translate(0, ' + (titleHeight + titleMargin) + ')');
 
         var update = function() {
-            var yScale = d3.scale.linear()
-                .domain([0, data.map(function(d) {
-                    return d3.max(d.values);
-                }).reduce(function(prev, cur) {
-                    return prev + cur;
-                }, 0)])
-                .range([0, +chartArea.attr('height')]);
-            var scaledData = data.map(function(d) {
-                return {
-                    title: d.title,
-                    values: d.values.map(function(v) {
-                        return yScale(v);
-                    })
-                };
-            });
+            var yScale
+            if (mode == exploded) {
+                yScale = d3.scale.linear()
+                    .domain([0, data.map(function(d) {
+                        return d3.max(d.values);
+                    }).reduce(function(prev, cur) {
+                        return prev + cur;
+                    }, 0)])
+                    .range([0, +chartArea.attr('height')]);
+                var scaledData = data.map(function(d) {
+                    return {
+                        title: d.title,
+                        values: d.values.map(function(v) {
+                            return yScale(v);
+                        })
+                    };
+                });
 
-            var rowUpdate = chartArea.selectAll('g')
-                .data(scaledData);
-            var row = rowUpdate.enter()
-                .append('g')
-                .attr('transform', function(d) {
-                    var transform = 'translate(' + (width / 2) + ', ' + height + ')'
-                    return transform;
-                })
-                .on('mouseover', function(d, i, a) {
-                    d3.selectAll(this.childNodes)
-                        .classed('active', true);
-                })
-                .on('mouseout', function(d, i, a) {
-                    d3.selectAll(this.childNodes)
-                        .classed('active', false);
+                var rowUpdate = chartArea.selectAll('g')
+                    .data(scaledData);
+                var row = rowUpdate.enter()
+                    .append('g')
+                    .attr('transform', function(d) {
+                        var transform = 'translate(' + (width / 2) + ', ' + height + ')'
+                        return transform;
+                    })
+                    .on('mouseover', function(d, i, a) {
+                        d3.selectAll(this.childNodes)
+                            .classed('active', true);
+                    })
+                    .on('mouseout', function(d, i, a) {
+                        d3.selectAll(this.childNodes)
+                            .classed('active', false);
+                    });
+                rowUpdate.yOffset = 0;
+                rowUpdate
+                    .transition()
+                    .duration(500)
+                    .attr('transform', function(d) {
+                        rowUpdate.yOffset += d3.max(d.values) / 2
+                        var transform = 'translate(' + (width / 2) + ', ' + rowUpdate.yOffset + ')'
+                        rowUpdate.yOffset += d3.max(d.values) / 2;
+                        return transform;
+                    });
+                rowUpdate.exit()
+                    .transition()
+                    .remove();
+                var line = row
+                    .append('polygon')
+                    .classed('center-fill', true)
+                    .attr('points', function(d) {
+                        var points = [
+                            [-centerSpacing, 0],
+                            [centerSpacing, 0],
+                            [centerSpacing, 0],
+                            [-centerSpacing, 0]
+                        ];
+                        return points.map(function(point) {
+                            return point.join(' ');
+                        }).join(', ');
+                    })
+                rowUpdate.select('polygon')
+                    .transition()
+                    .duration(500)
+                    .attr('points', function(d) {
+                        var points = [
+                            [-centerSpacing, -d.values[0] / 2],
+                            [centerSpacing, -d.values[1] / 2],
+                            [centerSpacing, d.values[1] / 2],
+                            [-centerSpacing, d.values[0] / 2]
+                        ];
+                        return points.map(function(point) {
+                            return point.join(' ');
+                        }).join(', ');
+                    });
+                rowUpdate.exit().
+                select('polygon')
+                    .transition()
+                    .attr('points', function(d) {
+                        var points = [
+                            [-centerSpacing, 0],
+                            [centerSpacing, 0],
+                            [centerSpacing, 0],
+                            [-centerSpacing, 0]
+                        ];
+                        return points.map(function(point) {
+                            return point.join(' ');
+                        }).join(', ');
+                    })
+                    .remove();
+                var boxUpdate = rowUpdate.selectAll('rect')
+                    .data(function(d) {
+                        return d.values;
+                    });
+                var box = boxUpdate.enter()
+                    .append('rect')
+                    .classed('box', true)
+                    .classed('box-left', function(d, i) {
+                        return !i;
+                    })
+                    .classed('box-right', function(d, i) {
+                        return !!i;
+                    })
+                    .attr('width', boxWidth)
+                    .attr('height', 0)
+                    .attr('x', function(d, i, a) {
+                        if (!i) {
+                            // Left side
+                            return -centerSpacing - boxWidth;
+                        }
+                        // Right side
+                        return centerSpacing;
+                    });
+                boxUpdate
+                    .transition()
+                    .duration(500)
+                    .attr('height', function(d) {
+                        return d;
+                    })
+                    .attr('transform', function(d) {
+                        return 'translate(0, ' + -d / 2 + ')';
+                    });
+                rowUpdate.exit().selectAll('g g rect')
+                    .transition()
+                    .attr('height', function(d) {
+                        return 0;
+                    })
+                    .attr('transform', function(d) {
+                        return 'translate(0, 0)';
+                    })
+                    .remove();
+            } else if (mode === stacked) {
+                yScale = d3.scale.linear()
+                    .domain([0, d3.max(data.map(function(d) {
+                        return d.values;
+                    }).reduce(function(prev, cur) {
+                        return [prev[0] + cur[0], prev[1] + cur[1]];
+                    }, [0, 0]))])
+                    .range([0, +chartArea.attr('height')]);
+                var scaledData = data.map(function(d) {
+                    return {
+                        title: d.title,
+                        values: d.values.map(function(v) {
+                            return yScale(v);
+                        })
+                    };
                 });
-            rowUpdate.yOffset = 0;
-            rowUpdate
-                .transition()
-                .duration(500)
-                .attr('transform', function(d) {
-                    rowUpdate.yOffset += d3.max(d.values) / 2
-                    var transform = 'translate(' + (width / 2) + ', ' + rowUpdate.yOffset + ')'
-                    rowUpdate.yOffset += d3.max(d.values) / 2;
-                    return transform;
-                });
-            rowUpdate.exit()
-                .transition()
-                .remove();
-            var line = row
-                .append('polygon')
-                .classed('center-fill', true)
-                .attr('points', function(d) {
-                    var points = [
-                        [-centerSpacing, 0],
-                        [centerSpacing, 0],
-                        [centerSpacing, 0],
-                        [-centerSpacing, 0]
-                    ];
-                    return points.map(function(point) {
-                        return point.join(' ');
-                    }).join(', ');
-                })
-            rowUpdate.select('polygon')
-                .transition()
-                .duration(500)
-                .attr('points', function(d) {
-                    var points = [
-                        [-centerSpacing, -d.values[0] / 2],
-                        [centerSpacing, -d.values[1] / 2],
-                        [centerSpacing, d.values[1] / 2],
-                        [-centerSpacing, d.values[0] / 2]
-                    ];
-                    return points.map(function(point) {
-                        return point.join(' ');
-                    }).join(', ');
-                });
-            rowUpdate.exit().
-            select('polygon')
-                .transition()
-                .attr('points', function(d) {
-                    var points = [
-                        [-centerSpacing, 0],
-                        [centerSpacing, 0],
-                        [centerSpacing, 0],
-                        [-centerSpacing, 0]
-                    ];
-                    return points.map(function(point) {
-                        return point.join(' ');
-                    }).join(', ');
-                })
-                .remove();
-            var boxUpdate = rowUpdate.selectAll('rect')
-                .data(function(d) {
-                    return d.values;
-                });
-            var box = boxUpdate.enter()
-                .append('rect')
-                .classed('box', true)
-                .classed('box-left', function(d, i) {
-                    return !i;
-                })
-                .classed('box-right', function(d, i) {
-                    return !!i;
-                })
-                .attr('width', boxWidth)
-                .attr('height', 0)
-                .attr('x', function(d, i, a) {
-                    if (!i) {
-                        // Left side
-                        return -centerSpacing - boxWidth;
-                    }
-                    // Right side
-                    return centerSpacing;
-                });
-            boxUpdate
-                .transition()
-                .duration(500)
-                .attr('height', function(d) {
-                    return d;
-                })
-                .attr('transform', function(d) {
-                    return 'translate(0, ' + -d / 2 + ')';
-                });
-            rowUpdate.exit().selectAll('g g rect')
-                .transition()
-                .attr('height', function(d) {
-                    return 0;
-                })
-                .attr('transform', function(d) {
-                    return 'translate(0, 0)';
-                })
-                .remove();
+
+                var rowUpdate = chartArea.selectAll('g')
+                    .data(scaledData);
+                var row = rowUpdate.enter()
+                    .append('g')
+                    .attr('transform', function(d) {
+                        var transform = 'translate(' + (width / 2) + ', 0)'
+                        return transform;
+                    })
+                    .on('mouseover', function(d, i, a) {
+                        d3.selectAll(this.childNodes)
+                            .classed('active', true);
+                    })
+                    .on('mouseout', function(d, i, a) {
+                        d3.selectAll(this.childNodes)
+                            .classed('active', false);
+                    });
+                rowUpdate
+                    .transition()
+                    .duration(500)
+                    .attr('transform', function(d) {
+                        var transform = 'translate(' + (width / 2) + ', 0)'
+                        return transform;
+                    });
+                rowUpdate.exit()
+                    .transition()
+                    .remove();
+                var line = row
+                    .append('polygon')
+                    .classed('center-fill', true)
+                    .attr('points', function(d) {
+                        var points = [
+                            [-centerSpacing, 0],
+                            [centerSpacing, 0],
+                            [centerSpacing, 0],
+                            [-centerSpacing, 0]
+                        ];
+                        return points.map(function(point) {
+                            return point.join(' ');
+                        }).join(', ');
+                    })
+                rowUpdate.select('polygon')
+                    .transition()
+                    .duration(500)
+                    .attr('points', function(d) {
+                        var points = [
+                            [-centerSpacing, -d.values[0] / 2],
+                            [centerSpacing, -d.values[1] / 2],
+                            [centerSpacing, d.values[1] / 2],
+                            [-centerSpacing, d.values[0] / 2]
+                        ];
+                        return points.map(function(point) {
+                            return point.join(' ');
+                        }).join(', ');
+                    });
+                rowUpdate.exit().
+                select('polygon')
+                    .transition()
+                    .attr('points', function(d) {
+                        var points = [
+                            [-centerSpacing, 0],
+                            [centerSpacing, 0],
+                            [centerSpacing, 0],
+                            [-centerSpacing, 0]
+                        ];
+                        return points.map(function(point) {
+                            return point.join(' ');
+                        }).join(', ');
+                    })
+                    .remove();
+                var boxUpdate = rowUpdate.selectAll('rect')
+                    .data(function(d) {
+                        return d.values;
+                    });
+                var box = boxUpdate.enter()
+                    .append('rect')
+                    .classed('box', true)
+                    .classed('box-left', function(d, i) {
+                        return !i;
+                    })
+                    .classed('box-right', function(d, i) {
+                        return !!i;
+                    })
+                    .attr('width', boxWidth)
+                    .attr('height', 0)
+                    .attr('x', function(d, i, a) {
+                        if (!i) {
+                            // Left side
+                            return -centerSpacing - boxWidth;
+                        }
+                        // Right side
+                        return centerSpacing;
+                    });
+                boxUpdate
+                    .transition()
+                    .duration(500)
+                    .attr('height', function(d) {
+                        return d;
+                    })
+                    .attr('transform', function(d, i, a) {
+                        console.log(scaledData.map(function(d) {
+                            return d.values[i];
+                        }).reduce(function(prev, curr) {
+                            return prev + cur;
+                        }, 0))
+                        return 'translate(0, ' + scaledData.map(function(d) {
+                            return d.values[i];
+                        }).slice(0, a).reduce(function(prev, curr) {
+                            return prev + curr;
+                        }, 0) + ')';
+                    });
+                rowUpdate.exit().selectAll('g g rect')
+                    .transition()
+                    .attr('height', function(d) {
+                        return 0;
+                    })
+                    .attr('transform', function(d) {
+                        return 'translate(0, 0)';
+                    })
+                    .remove();
+            }
         }
         var updateButton = svg.append('a')
             .attr('xlink:href', '#')
