@@ -7,6 +7,7 @@ import sqlite3
 
 import traceback
 import math
+import time
 from collections import defaultdict
 # Init
 http = urllib3.PoolManager(
@@ -27,8 +28,6 @@ try:
 		timestamp,
 		type,
 		itemId,
-		itemBefore,
-		itemAfter,
 		item.name AS itemName
 	FROM event
 		LEFT JOIN
@@ -59,8 +58,6 @@ try:
 						event.timestamp,
 						event.type,
 						event.itemId,
-						event.itemBefore,
-						event.itemAfter,
 						participantFrame.totalGold
 					FROM event
 						LEFT JOIN
@@ -101,45 +98,64 @@ try:
 	# 					purchase.participantId = destroy.participantId AND 
 	# 					purchase.timestamp = destroy.timestamp''')
 	# Items bought
-	c.execute('''SELECT matchId, id FROM participant;''')
-	for (matchId, participantId) in c.fetchall():
-		c.execute('''SELECT timestamp, type, itemId, itemBefore, itemAfter, totalGold
+	c.execute('''SELECT matchId, id, championId FROM participant;''')
+	for (matchId, participantId, championId) in c.fetchall():
+		c.execute('''SELECT type, itemId, timestamp, totalGold
 			FROM eventItem
 			WHERE matchId = ? AND participantId = ?;''', (matchId, participantId))
 		events = c.fetchall()
 		items = []
+		playerActions = []
+		idx = 0
 		print(matchId, participantId)
-		for (idx, (timestamp, eventType, itemId, itemBefore, itemAfter, goldThreshold)) in enumerate(events):
-			item = itemId
-			if item == None or item=="NULL":
-				item = itemBefore
-			if item == None or item == 0:
-				item = itemAfter
+		# Kalista's Black Spear
+		if championId == 429:
+			items.append((3599, 0, 0))
+		while idx < len(events):
+			# Init
+			event = events[idx]
+			eventType = event[0]
+			item = (event[1], event[2], event[3])
 			print(eventType, item)
+			# Conditions
 			if eventType == 'ITEM_PURCHASED':
-				items.append((item, timestamp, goldThreshold))
-			elif eventType == 'ITEM_DESTROYED' or eventType == 'ITEM_SOLD':
-				items.pop(list(zip(*items))[0].index(item))
-			elif eventType == 'ITEM_UNDO':
-				originalTime = -1
-				itemBuy = False
-				for (timestamp, eventType, itemId, ib, ia, goldThreshold) in events[idx - 1::-1]:
-					if timestamp < originalTime:
+				items.append(item)
+				itemsDestroyed = []
+				idx += 1
+				while idx < len(events):
+					destroyEvent = events[idx]
+					destroyItem = (destroyEvent[1], destroyEvent[2], destroyEvent[3])
+					if destroyItem[1] != item[1] or destroyEvent[0] != 'ITEM_DESTROYED':
 						break
-					elif itemId == item:
-						if eventType == 'ITEM_PURCHASED':
-							# Undo a buy
-							items.pop(list(zip(*items))[0].index(itemId))
-							originalTime = timestamp
-						else:
-							# Undo a sell
-							items.append((itemId, timestamp, goldThreshold))
-							break
-					elif originalTime > 0 and eventType == 'ITEM_DESTROYED':
-						# Undo buy side effects
-						items.append((itemId, timestamp, goldThreshold))
-			if len(items) > 0:
-				print(list(zip(*items))[0])
+					items.pop(list(zip(*items))[0].index(destroyItem[0]))
+					itemsDestroyed.append(destroyItem)
+					idx += 1
+				playerActions.append(('buy', item, itemsDestroyed))
+				continue
+			elif eventType == 'ITEM_SOLD':
+				item = items.pop(list(zip(*items))[0].index(item[0]))
+				playerActions.append(('sell', item))
+			elif eventType == 'ITEM_DESTROYED':
+				items.pop(list(zip(*items))[0].index(item[0]))
+				# Archangel -> Seraph
+				if item[0] == 3003:
+					items.append((3040, item[1], item[2]))
+				# Manamune -> Muramana
+				elif item[0] == 3004:
+					items.append((3041, item[1], item[2]))
+			elif eventType == 'ITEM_UNDO':
+				action = playerActions.pop()
+				if action[0] == 'buy':
+					# Undo buy
+					items.pop(list(zip(*items))[0].index(action[1][0]))
+					print(action[2])
+					items.extend(action[2])
+				elif action[0] == 'sell':
+					# Undo sell
+					items.append(action[1])
+			# Increment
+			idx += 1
+
 		if len(items) > 7:
 			print('Participant #{} in match {} has too many items!'.format(participantId, matchId))
 			print(list(zip(*items))[0])

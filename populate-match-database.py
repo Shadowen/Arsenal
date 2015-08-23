@@ -34,7 +34,7 @@ for matchSet in files:
     requestNum = 1
     for (matchNum, matchId) in enumerate(matchIds):
         ## TODO
-        if matchNum == 50:
+        if matchNum == 3:
             break
         try:
             while True:
@@ -112,10 +112,14 @@ for matchSet in files:
                                 participantFrame['totalGold'], participantFrame['level'], participantFrame['minionsKilled'], participantFrame['jungleMinionsKilled']))
                     for event in frame.get('events', []):
                         eventDefault = defaultdict(lambda: None, event)
-                        c.execute('''INSERT INTO event (matchId, frameTimestamp, timestamp, type, itemId, itemBefore, itemAfter, participantId, creatorId, killerId, victimId,
-                            positionX, positionY) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                            (matchId, frame['timestamp'], event['timestamp'], event['eventType'], eventDefault['itemId'], eventDefault['itemBefore'],
-                            eventDefault['itemAfter'], eventDefault['participantId'], eventDefault['creatorId'], eventDefault['killerId'],
+                        itemId = eventDefault['itemId']
+                        if itemId == None:
+                            itemId = eventDefault['itemBefore']
+                        if itemId == None or itemId == 0:
+                            itemId = eventDefault['itemAfter']
+                        c.execute('''INSERT INTO event (matchId, frameTimestamp, timestamp, type, itemId, participantId, creatorId, killerId, victimId,
+                            positionX, positionY) VALUES (?, ?, ?, ?, coalesce(?, ?, ?), ?, ?, ?, ?, ?, ?)''',
+                            (matchId, frame['timestamp'], event['timestamp'], event['eventType'], itemId, eventDefault['participantId'], eventDefault['creatorId'], eventDefault['killerId'],
                             eventDefault['victimId'], event.get('position', {'x' : None})['x'], event.get('position', {'y' : None})['y']))
                         for assist in event.get('assistingParticipantIds', []):
                             c.execute('''INSERT INTO assist (matchId, eventId, participantId)

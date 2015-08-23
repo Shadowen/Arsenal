@@ -1,3 +1,5 @@
+---
+---
 <!DOCTYPE html>
 <html>
 
@@ -46,7 +48,7 @@
 
         var exploded = "exploded";
         var stacked = "stacked";
-        var mode = stacked;
+        var mode = exploded;
 
 
         var svg = parent
@@ -64,7 +66,7 @@
         var chartArea = svg.append('g')
             .attr('width', width)
             .attr('height', height - titleHeight - titleMargin)
-            .attr('transform', 'translate(0, ' + (titleHeight + titleMargin) + ')');
+            .attr('transform', 'translate(' + width / 2 + ', ' + (titleHeight + titleMargin) + ')');
 
         var update = function() {
             var yScale
@@ -89,10 +91,6 @@
                     .data(scaledData);
                 var row = rowUpdate.enter()
                     .append('g')
-                    .attr('transform', function(d) {
-                        var transform = 'translate(' + (width / 2) + ', ' + height + ')'
-                        return transform;
-                    })
                     .on('mouseover', function(d, i, a) {
                         d3.selectAll(this.childNodes)
                             .classed('active', true);
@@ -100,16 +98,6 @@
                     .on('mouseout', function(d, i, a) {
                         d3.selectAll(this.childNodes)
                             .classed('active', false);
-                    });
-                rowUpdate.yOffset = 0;
-                rowUpdate
-                    .transition()
-                    .duration(500)
-                    .attr('transform', function(d) {
-                        rowUpdate.yOffset += d3.max(d.values) / 2
-                        var transform = 'translate(' + (width / 2) + ', ' + rowUpdate.yOffset + ')'
-                        rowUpdate.yOffset += d3.max(d.values) / 2;
-                        return transform;
                     });
                 rowUpdate.exit()
                     .transition()
@@ -128,16 +116,18 @@
                             return point.join(' ');
                         }).join(', ');
                     })
+                var yOffset = 0;
                 rowUpdate.select('polygon')
                     .transition()
                     .duration(500)
                     .attr('points', function(d) {
                         var points = [
-                            [-centerSpacing, -d.values[0] / 2],
-                            [centerSpacing, -d.values[1] / 2],
-                            [centerSpacing, d.values[1] / 2],
-                            [-centerSpacing, d.values[0] / 2]
+                            [-centerSpacing, yOffset],
+                            [centerSpacing, yOffset],
+                            [centerSpacing, yOffset + d.values[1]],
+                            [-centerSpacing, yOffset + d.values[0]]
                         ];
+                        yOffset += d3.max(d.values);
                         return points.map(function(point) {
                             return point.join(' ');
                         }).join(', ');
@@ -157,6 +147,26 @@
                         }).join(', ');
                     })
                     .remove();
+                row
+                    .append('text')
+                    .classed('category-label', true)
+                    .attr('dy', '0.35em');
+                var yOffset = 0;
+                rowUpdate.select('text')
+                    .transition()
+                    .duration(500)
+                    .attr('transform', function(d){
+                        var translation = 'translate(0, ' + (yOffset + (d.values[0] + d.values[1]) / 4) + ')';
+                        yOffset += d3.max(d.values);
+                        return translation;
+                    })
+                    .text(function(d){
+                        return d.title;
+                    });
+                rowUpdate.exit()
+                .select('text')
+                .transition()
+                .remove();
                 var boxUpdate = rowUpdate.selectAll('rect')
                     .data(function(d) {
                         return d.values;
@@ -180,14 +190,24 @@
                         // Right side
                         return centerSpacing;
                     });
+                var yOffset = 0;
+                var even = true;
+                var offset = [];
                 boxUpdate
                     .transition()
                     .duration(500)
                     .attr('height', function(d) {
                         return d;
                     })
-                    .attr('transform', function(d) {
-                        return 'translate(0, ' + -d / 2 + ')';
+                    .attr('transform', function(d, i) {
+                        var transform = 'translate(0, ' + (yOffset) + ')';
+                        offset.push(d);
+                        even = !even;
+                        if (even){
+                            yOffset += d3.max(offset);
+                            offset = [];
+                        }
+                        return transform;
                     });
                 rowUpdate.exit().selectAll('g g rect')
                     .transition()
@@ -216,13 +236,15 @@
                 });
 
                 var rowUpdate = chartArea.selectAll('g')
-                    .data(scaledData);
+                    .data(scaledData)
+                rowUpdate.transition()
+                    .delay(500)
+                    .attr('transform', function(d) {
+                        var transform = 'translate(0, 0)'
+                        return transform;
+                    });
                 var row = rowUpdate.enter()
                     .append('g')
-                    .attr('transform', function(d) {
-                        var transform = 'translate(' + (width / 2) + ', 0)'
-                        return transform;
-                    })
                     .on('mouseover', function(d, i, a) {
                         d3.selectAll(this.childNodes)
                             .classed('active', true);
@@ -230,13 +252,6 @@
                     .on('mouseout', function(d, i, a) {
                         d3.selectAll(this.childNodes)
                             .classed('active', false);
-                    });
-                rowUpdate
-                    .transition()
-                    .duration(500)
-                    .attr('transform', function(d) {
-                        var transform = 'translate(' + (width / 2) + ', 0)'
-                        return transform;
                     });
                 rowUpdate.exit()
                     .transition()
@@ -254,23 +269,25 @@
                         return points.map(function(point) {
                             return point.join(' ');
                         }).join(', ');
-                    })
+                    });
+                var leftOffset = 0;
+                var rightOffset = 0;
                 rowUpdate.select('polygon')
                     .transition()
                     .duration(500)
-                    .attr('points', function(d) {
+                    .attr('points', function(d, i, a) {
                         var points = [
-                            [-centerSpacing, -d.values[0] / 2],
-                            [centerSpacing, -d.values[1] / 2],
-                            [centerSpacing, d.values[1] / 2],
-                            [-centerSpacing, d.values[0] / 2]
+                            [-centerSpacing, leftOffset],
+                            [centerSpacing, rightOffset],
+                            [centerSpacing, rightOffset += d.values[1]] ,
+                            [-centerSpacing, leftOffset += d.values[0]]
                         ];
                         return points.map(function(point) {
                             return point.join(' ');
                         }).join(', ');
                     });
-                rowUpdate.exit().
-                select('polygon')
+                rowUpdate.exit()
+                    .select('polygon')
                     .transition()
                     .attr('points', function(d) {
                         var points = [
@@ -284,6 +301,30 @@
                         }).join(', ');
                     })
                     .remove();
+                row
+                    .append('text')
+                    .classed('category-label', true)
+                    .attr('dy', '0.35em');
+                var leftOffset = 0;
+                var rightOffset = 0;
+                rowUpdate.select('text')
+                    .transition()
+                    .duration(500)
+                    .attr('transform', function(d){
+                        leftOffset += d.values[0] / 2;
+                        rightOffset += d.values[1] / 2;
+                        var translation = 'translate(0, ' + (leftOffset + rightOffset) / 2 + ')';
+                        leftOffset += d.values[0] / 2;
+                        rightOffset += d.values[1] / 2;
+                        return translation;
+                    })
+                    .text(function(d){
+                        return d.title;
+                    });
+                rowUpdate.exit()
+                .select('text')
+                .transition()
+                .remove();
                 var boxUpdate = rowUpdate.selectAll('rect')
                     .data(function(d) {
                         return d.values;
@@ -314,11 +355,6 @@
                         return d;
                     })
                     .attr('transform', function(d, i, a) {
-                        console.log(scaledData.map(function(d) {
-                            return d.values[i];
-                        }).reduce(function(prev, curr) {
-                            return prev + cur;
-                        }, 0))
                         return 'translate(0, ' + scaledData.map(function(d) {
                             return d.values[i];
                         }).slice(0, a).reduce(function(prev, curr) {
@@ -338,11 +374,14 @@
         }
         var updateButton = svg.append('a')
             .attr('xlink:href', '#')
-            .on('click', update)
-            .attr('transform', 'translate(' + (width - 100) + ',' + 40 + ')');
+            .on('click', function(){
+                mode = mode == exploded ? stacked : exploded;
+                update();
+            })
+            .attr('transform', 'translate(' + (width - 120) + ',' + 40 + ')');
         updateButton
             .append('rect')
-            .attr('width', 80)
+            .attr('width', 100)
             .attr('height', 20)
             .attr('fill', 'white')
             .attr('x', -5)
@@ -351,15 +390,12 @@
             .attr('ry', 5);
         updateButton
             .append('text')
-            .text('button text')
+            .text('Switch modes')
 
         update();
     };
 
     d3.select('body').call(createStackedComparison);
-
-    data.pop()
-    data.pop()
     </script>
 </body>
 
