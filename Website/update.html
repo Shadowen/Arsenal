@@ -2,43 +2,21 @@
 <html>
 
 <head>
-    <title>Animating Changes in Force Diagram</title>
     <script src="http://d3js.org/d3.v3.min.js"></script>
-    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-    <style>
-    .link {
-        stroke: #2E2E2E;
-        stroke-width: 2px;
-    }
-    
-    .node {
-        stroke: #fff;
-        stroke-width: 2px;
-    }
-    
-    .textClass {
-        stroke: #323232;
-        font-family: "Lucida Grande", "Droid Sans", Arial, Helvetica, sans-serif;
-        font-weight: normal;
-        stroke-width: .5;
-        font-size: 14px;
-    }
-    </style>
+    <link rel='stylesheet' type='text/css' href='/css/force.css'>
 </head>
 
 <body>
     <button onclick="addNodes()">Restart Animation</button>
     <script>
-    var graph;
-
-    function myGraph() {
-
+    function createForce() {
         // Add and remove elements on the graph object
         this.addNode = function(id) {
             nodes.push({
                 "id": id
             });
             update();
+            return this;
         };
 
         this.removeNode = function(id) {
@@ -51,6 +29,7 @@
             }
             nodes.splice(findNodeIndex(id), 1);
             update();
+            return this;
         };
 
         this.removeLink = function(source, target) {
@@ -61,6 +40,7 @@
                 }
             }
             update();
+            return this;
         };
 
         this.addLink = function(source, target, value) {
@@ -70,6 +50,7 @@
                 "value": value
             });
             update();
+            return this;
         };
 
         var findNode = function(id) {
@@ -96,10 +77,6 @@
             .append("svg:svg")
             .attr("width", w)
             .attr("height", h)
-            .attr("id", "svg")
-            .attr("pointer-events", "all")
-            .attr("viewBox", "0 0 " + w + " " + h)
-            .attr("perserveAspectRatio", "xMinYMid")
             .append('svg:g');
 
         var force = d3.layout.force();
@@ -146,14 +123,6 @@
                     return color(d.id);
                 });
 
-            nodeEnter.append("svg:text")
-                .attr("class", "textClass")
-                .attr("x", 14)
-                .attr("y", ".31em")
-                .text(function(d) {
-                    return d.id;
-                });
-
             node.exit().remove();
 
             force.on("tick", function() {
@@ -189,32 +158,32 @@
 
         // Make it all go
         update();
+        return this;
     }
 
-    graph = new myGraph("#svgdiv");
-
-    graph.addNode('Sophia');
-    graph.addNode('Daniel');
-    graph.addNode('Ryan');
-    graph.addNode('Lila');
-    graph.addNode('Suzie');
-    graph.addNode('Riley');
-    graph.addNode('Grace');
-    graph.addNode('Dylan');
-    graph.addNode('Mason');
-    graph.addNode('Emma');
-    graph.addNode('Alex');
-    graph.addLink('Alex', 'Ryan', '20');
-    graph.addLink('Sophia', 'Ryan', '20');
-    graph.addLink('Daniel', 'Ryan', '20');
-    graph.addLink('Ryan', 'Lila', '30');
-    graph.addLink('Lila', 'Suzie', '20');
-    graph.addLink('Suzie', 'Riley', '10');
-    graph.addLink('Suzie', 'Grace', '30');
-    graph.addLink('Grace', 'Dylan', '10');
-    graph.addLink('Dylan', 'Mason', '20');
-    graph.addLink('Dylan', 'Emma', '20');
-    graph.addLink('Emma', 'Mason', '10');
+    var graph = createForce()
+        .addNode('Sophia')
+        .addNode('Daniel')
+        .addNode('Ryan')
+        .addNode('Lila')
+        .addNode('Suzie')
+        .addNode('Riley')
+        .addNode('Grace')
+        .addNode('Dylan')
+        .addNode('Mason')
+        .addNode('Emma')
+        .addNode('Alex')
+        .addLink('Alex', 'Ryan', '20')
+        .addLink('Sophia', 'Ryan', '20')
+        .addLink('Daniel', 'Ryan', '20')
+        .addLink('Ryan', 'Lila', '30')
+        .addLink('Lila', 'Suzie', '20')
+        .addLink('Suzie', 'Riley', '10')
+        .addLink('Suzie', 'Grace', '30')
+        .addLink('Grace', 'Dylan', '10')
+        .addLink('Dylan', 'Mason', '20')
+        .addLink('Dylan', 'Emma', '20')
+        .addLink('Emma', 'Mason', '10');
     </script>
 </body>
 
