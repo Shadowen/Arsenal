@@ -1,218 +1,335 @@
---- ---
+---
+---
 <!DOCTYPE html>
 <html>
 
 <head>
-    <script src='/js/d3.min.js'></script>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
     <link rel='stylesheet' type='text/css' href='/css/force.css'>
 </head>
 
 <body>
     <script>
-    var createForce = function(parent) {
-        var graph = {
-            nodes: [{
-                itemId: 0,
-                "group": 1,
-                frequency: 1
-            }, {
-                itemId: 1,
-                "group": 2,
-                frequency: 1
-            }, {
-                itemId: 2,
-                "group": 1,
-                frequency: 5
-            }, {
-                itemId: 3,
-                "group": 1,
-                frequency: 1
-            }, {
-                itemId: 4,
-                "group": 1,
-                frequency: 1
-            }, ],
-            links: [{
-                "source": 1,
-                "target": 0,
-                "value": 10
-            }, {
-                "source": 2,
-                "target": 0,
-                "value": 8
-            }, {
-                "source": 3,
-                "target": 0,
-                "value": 10
-            }, {
-                "source": 3,
-                "target": 2,
-                "value": 6
-            }, {
-                "source": 4,
-                "target": 0,
-                "value": 1
-            }, ]
+    function createForce() {
+        var self = this;
+        self.addNode = function(id, size) {
+            nodes.push({
+                id: id,
+                size: size
+            });
+            update();
+            return self;
         };
 
-        var width = 640;
-        var height = 480;
+        self.editNode = function(id, size) {
+            findNode(id).size = size;
+            update();
+            return self;
+        }
 
-        var svg = parent.append("svg")
-            .attr("width", width)
-            .attr("height", height);
+        self.removeNode = function(id) {
+            var i = 0;
+            var n = findNode(id);
+            while (i < links.length) {
+                if ((links[i]['source'] == n) || (links[i]['target'] == n)) {
+                    links.splice(i, 1);
+                } else i++;
+            }
+            nodes.splice(findNodeIndex(id), 1);
+            update();
+            return self;
+        };
 
-        var color = d3.scale.category20();
-        var nodes = graph.nodes.slice(),
-            links = [],
-            bilinks = [];
-        graph.links.forEach(function(link) {
-            var s = nodes[link.source],
-                t = nodes[link.target],
-                i = {
-                    invisible: true
-                }, // intermediate node
-                v = link.value;
-            nodes.push(i);
+        self.addLink = function(source, target, strength) {
             links.push({
-                source: s,
-                target: i,
-                value: v
-            }, {
-                source: i,
-                target: t,
-                value: v
+                "source": findNode(source),
+                "target": findNode(target),
+                "value": strength
             });
-            bilinks.push([s, i, t, v]);
-        });
-        var strengthScale = d3.scale.linear()
-            .domain([0, d3.max(graph.links.map(function(l) {
+            update();
+            return self;
+        };
+
+        self.editLink = function(source, target, strength) {
+            findLink(source, target).value = strength;
+            update();
+            return self;
+        }
+
+        self.removeLink = function(source, target) {
+            update();
+            return self;
+        };
+
+        self.appendTo = function(parent) {
+            parent.appendChild(svg[0][0]);
+            update();
+            return self;
+        }
+
+        var findNode = function(id) {
+            for (var i in nodes) {
+                if (nodes[i]["id"] === id) return nodes[i];
+            };
+        };
+
+        var findNodeIndex = function(id) {
+            for (var i = 0; i < nodes.length; i++) {
+                if (nodes[i].id == id) {
+                    return i;
+                }
+            };
+        };
+
+        var findLink = function(source, target) {
+            for (var i = 0; i < links.length; i++) {
+                if (links[i].source.id == source && links[i].target.id == target) {
+                    return links[i]
+                } else if (links[i].source.id == target && links[i].target.id == source) {
+                    return links[i]
+                }
+            }
+            return null;
+        }
+
+        var findLinkById = function(sourceId, targetId) {
+            for (var i = 0; i < links.length; i++) {
+                if ((links[i].source.id == sourceId && links[i].target.id == targetId) || (links[i].source.id == targetId && links[i].target.id == sourceId)) {
+                    return links[i]
+                }
+            }
+            return null;
+        }
+
+        // set up the D3 visualisation in the specified element
+        var w = 960,
+            h = 450;
+
+        var color = d3.scale.category10();
+
+        var svg = d3.select(document.createElementNS("http://www.w3.org/2000/svg", "svg"))
+            .attr("width", w)
+            .attr("height", h);
+        var vis = svg
+            .append('svg:g');
+        vis.append('rect')
+            .attr('width', w)
+            .attr('height', h)
+            .attr('fill', 'none')
+            .attr('pointer-events', 'fill')
+            .on('click', function() {
+                hiddenNodes.forEach(function(n) {
+                    self.addNode(n.id, n.size);
+                });
+                hiddenNodes = [];
+                hiddenLinks.forEach(function(l) {
+                    self.addLink(l.source.id, l.target.id, l.value);
+                });
+                hiddenLinks = [];
+                update();
+            });
+
+        var force = d3.layout.force();
+
+        var nodes = force.nodes(),
+            links = force.links();
+
+        var hiddenNodes = [],
+            hiddenLinks = [];
+
+        self.update = function() {
+            var linkSizes = links.map(function(l) {
                 return l.value;
-            }))])
-            .range([0, 1]);
+            });
+            var smallestLink = d3.min(linkSizes);
+            var largestLink = d3.max(linkSizes);
+            var linkStrengthScale = d3.scale.linear()
+                .domain([0, largestLink])
+                .range([0, 1]);
+            var strokeScale = d3.scale.pow()
+                .domain([smallestLink, largestLink])
+                .range([1, 10]);
+            var linkDistanceScale = d3.scale.pow()
+                .domain([smallestLink, largestLink])
+                .range([300, 10]);
 
-
-        var update = function() {
-            var force = d3.layout.force();
-            force
-                .nodes(nodes)
-                .links(links);
-            force.charge(function(n) {
-                    if (n.invisible) {
-                        return -100;
-                    }
-                    return -1000;
-                })
-                .friction(0.5)
-                .size([width, height])
-                .linkDistance(function(l) {
-                    return strengthScale(l.value) * 100;
-                })
-                .linkStrength(function(l) {
-                    return strengthScale(l.value);
+            var link = vis.selectAll("line")
+                .data(links, function(d) {
+                    return d.source.id + "-" + d.target.id;
                 });
 
-            var linkUpdate = svg.selectAll(".link")
-                .data(bilinks);
-            var link = linkUpdate
-                .enter()
-                .append("path")
-                .attr("class", "link")
-                .attr('stroke-width', function(l) {
-                    return l[3];
+            link.enter().append("line")
+                .attr("id", function(d) {
+                    return d.source.id + "-" + d.target.id;
+                })
+                .classed("link", true)
+                .attr('stroke-width', 0);
+            vis.selectAll('line')
+                .transition()
+                .attr("stroke-width", function(d) {
+                    return strokeScale(d.value);
                 });
-            linkUpdate.exit()
+            link.exit()
                 .transition()
                 .attr('stroke-width', 0)
                 .remove();
 
-            var nodeUpdate = svg.selectAll(".node")
-                .data(graph.nodes);
-            var node = nodeUpdate
-                .enter()
-                .append("g")
-                .attr("class", function() {
-                    return 'node';
-                })
-                .on('click', function(n) {
-                    nodes.forEach(function(aNode) {
-                        aNode.fixed = false
-                    })
-                    n.fixed = true;
-                    update();
-                })
-                .call(force.drag);
-            nodeUpdate.exit()
-                .select('g')
-                .transition()
-                .remove();
-            node.append('circle')
-                .attr("r", function(d) {
-                    return d.frequency * 6;
-                })
-                .style("fill", function(d) {
-                    return color(d.group);
+            var node = vis.selectAll("g.node")
+                .data(nodes, function(d) {
+                    return d.id;
                 });
-            nodeUpdate.exit()
-                .select('g circle')
+            node.exit()
                 .transition()
-                .attr('r', 0)
                 .remove();
-            node.append('defs')
+            var nodeEnter = node.enter()
+                .append("g")
+                .classed("node", true)
+                .classed('sendToTop', true)
+                .call(force.drag)
+                .on('dblclick', function(d) {
+                    if (hiddenNodes.length > 0 || hiddenLinks.length > 0) {
+                        hiddenNodes.forEach(function(n) {
+                            self.addNode(n.id, n.size);
+                        });
+                        hiddenNodes = [];
+                        hiddenLinks.forEach(function(l) {
+                            self.addLink(l.source.id, l.target.id, l.value);
+                        });
+                        hiddenLinks = [];
+                        update();
+                        return;
+                    }
+                    // Focus an element
+                    for (var i = 0; i < nodes.length; i++) {
+                        var n = nodes[i];
+                        // Remove a node
+                        if (d.id != n.id && findLink(d.id, n.id) == null) {
+                            // Remove and store all links
+                            var linkNum = 0;
+                            for (var linkNum = 0; linkNum < links.length; linkNum++) {
+                                if ((links[linkNum]['source'] == n) || (links[linkNum]['target'] == n)) {
+                                    [].push.apply(hiddenLinks, links.splice(linkNum--, 1));
+                                }
+                            }
+                            [].push.apply(hiddenNodes, nodes.splice(i--, 1));
+                        }
+                    }
+                    update();
+                });
+            nodeEnter.append("svg:circle")
+                .attr("id", function(d) {
+                    return "Node;" + d.id;
+                })
+                .attr("fill", function(d) {
+                    return color(d.id);
+                })
+                .attr('r', 0);
+            node.select('circle')
+                .transition()
+                .attr("r", function(d) {
+                    return d.size;
+                });
+            node.exit().select('circle')
+                .transition()
+                .attr('r', 0);
+            nodeEnter.append('defs')
                 .append('clipPath')
                 .attr('id', function(d, i) {
                     return 'circle' + i;
                 })
                 .append('circle')
-                .attr('r', function(d) {
-                    return d.frequency * 5;
-                });
-            nodeUpdate.exit()
-                .select('g defs clipPath circle')
+                .attr('r', 0);
+            node.select('defs>clipPath>circle')
                 .transition()
-                .attr('r', function() {
-                    console.log('exitting');
-                    return 0;
+                .attr("r", function(d) {
+                    return d.size / 1.2;
+                });
+            node.exit().select('defs>clipPath>circle')
+                .transition()
+                .attr('r', 0);
+            nodeEnter.append('image')
+                .attr('clip-path', function(d, i) {
+                    return 'url(#circle' + i + ')';
                 })
-                .remove();
-            node.append('image')
+                .attr('xlink:href', function(d) {
+                    return 'http://ddragon.leagueoflegends.com/cdn/5.2.1/img/item/' + d.id + '.png'
+                });
+            node.select('image')
                 .attr('width', function(d) {
-                    return d.frequency * 10;
+                    return 2 * d.size / 1.2;
                 })
                 .attr('height', function(d) {
-                    return d.frequency * 10;
+                    return 2 * d.size / 1.2;
                 })
                 .attr('x', function() {
                     return -d3.select(this).attr('width') / 2;
                 })
                 .attr('y', function() {
                     return -d3.select(this).attr('height') / 2;
-                })
-                .attr('clip-path', function(d, i) {
-                    return 'url(#circle' + i + ')';
-                })
-                .attr('xlink:href', 'http://ddragon.leagueoflegends.com/cdn/5.2.1/img/item/1001.png');
-            nodeUpdate.exit()
-                .select('g image')
+                });
+            node.exit().select('image')
                 .transition()
-                .remove();
+                .attr('width', 0)
+                .attr('height', 0)
+                .attr('x', 0)
+                .attr('y', 0);
 
-            force
-                .on("tick", function() {
-                    link.attr("d", function(d) {
-                        return "M" + d[0].x + "," + d[0].y + "S" + d[1].x + "," + d[1].y + " " + d[2].x + "," + d[2].y;
-                    });
-                    node.attr("transform", function(d) {
-                        return "translate(" + d.x + "," + d.y + ")";
-                    });
+            // because of the way the network is created, nodes are created first, and links second,
+            // so the lines were on top of the nodes, this just reorders the DOM to put the svg:g on top
+            $(".sendToTop").each(function(index) {
+                this.parentNode.appendChild(this);
+            });
+
+            force.on("tick", function() {
+                node.attr("transform", function(d) {
+                    return "translate(" + d.x + "," + d.y + ")";
                 });
 
-            force.start();
-        };
-        update();
-    };
+                link.attr("x1", function(d) {
+                        return d.source.x;
+                    })
+                    .attr("y1", function(d) {
+                        return d.source.y;
+                    })
+                    .attr("x2", function(d) {
+                        return d.target.x;
+                    })
+                    .attr("y2", function(d) {
+                        return d.target.y;
+                    });
+            });
 
-    d3.select('body').call(createForce);
+            // Restart the force layout.
+            force
+                .gravity(1)
+                .charge(-80000)
+                .friction(0.1)
+                .linkDistance(function(d) {
+                    return d.source.size + d.target.size + linkDistanceScale(findLink(d.source.id, d.target.id).value);
+                })
+                .linkStrength(function(d) {
+                    return linkStrengthScale(d.value);
+                })
+                .size([w, h])
+                .start();
+            return this;
+        };
+
+        // Make it all go
+        update();
+        return this;
+    }
+
+    var graph = createForce()
+        .addNode(1001, 50)
+        .addNode(3003, 25)
+        .addNode(3004, 25)
+        .addLink(1001, 3003, 0.1)
+        .addLink(3003, 3004, 1)
+        .editNode(1001, 10)
+        .appendTo(document.body)
+        .update();
     </script>
 </body>
 
