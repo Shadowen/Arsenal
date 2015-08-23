@@ -3,21 +3,30 @@
 
 <head>
     <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
     <link rel='stylesheet' type='text/css' href='/css/force.css'>
 </head>
 
 <body>
-    <button onclick="addNodes()">Restart Animation</button>
     <script>
     function createForce() {
         // Add and remove elements on the graph object
-        this.addNode = function(id) {
+        this.addNode = function(id, size) {
             nodes.push({
-                "id": id
+                id: id,
+                size: size
             });
             update();
             return this;
         };
+
+        this.editNode = function(id, size) {
+            var i = 0;
+            var n = findNode(id);
+            n.size = size;
+            update();
+            return this;
+        }
 
         this.removeNode = function(id) {
             var i = 0;
@@ -43,11 +52,11 @@
             return this;
         };
 
-        this.addLink = function(source, target, value) {
+        this.addLink = function(source, target, strength) {
             links.push({
                 "source": findNode(source),
                 "target": findNode(target),
-                "value": value
+                "value": strength
             });
             update();
             return this;
@@ -67,6 +76,16 @@
             };
         };
 
+        var findLink = function(source, target) {
+            for (var i = 0; i < links.length; i++) {
+                if (links[i].source.id == source && links[i].target.id == target) {
+                    return links[i]
+                } else if (links[i].source.id == target && links[i].target.id == source) {
+                    return links[i]
+                }
+            }
+        }
+
         // set up the D3 visualisation in the specified element
         var w = 960,
             h = 450;
@@ -85,6 +104,21 @@
             links = force.links();
 
         var update = function() {
+            var linkSizes = links.map(function(l) {
+                return l.value;
+            });
+            var smallestLink = d3.min(linkSizes);
+            var largestLink = d3.max(linkSizes);
+            var linkStrengthScale = d3.scale.linear()
+                .domain([0, largestLink])
+                .range([0, 1]);
+            var strokeScale = d3.scale.pow()
+                .domain([smallestLink, largestLink])
+                .range([1, 10]);
+            var linkDistanceScale = d3.scale.pow()
+                .domain([smallestLink, largestLink])
+                .range([300, 10]);
+
             var link = vis.selectAll("line")
                 .data(links, function(d) {
                     return d.source.id + "-" + d.target.id;
@@ -94,36 +128,71 @@
                 .attr("id", function(d) {
                     return d.source.id + "-" + d.target.id;
                 })
-                .attr("stroke-width", function(d) {
-                    return d.value / 10;
-                })
                 .attr("class", "link");
-            link.append("title")
-                .text(function(d) {
-                    return d.value;
+            vis.selectAll('line')
+                .attr("stroke-width", function(d) {
+                    return strokeScale(d.value);
                 });
             link.exit().remove();
 
             var node = vis.selectAll("g.node")
                 .data(nodes, function(d) {
+                    console.log(d.id);
                     return d.id;
                 });
-
-            var nodeEnter = node.enter().append("g")
-                .attr("class", "node")
+            node.exit().remove();
+            var nodeEnter = node.enter()
+                .append("g")
+                .classed("node", true)
+                .classed('sendToTop', true)
                 .call(force.drag);
-
             nodeEnter.append("svg:circle")
-                .attr("r", 12)
                 .attr("id", function(d) {
                     return "Node;" + d.id;
                 })
-                .attr("class", "nodeStrokeClass")
                 .attr("fill", function(d) {
                     return color(d.id);
                 });
+            node.select('circle')
+                .attr("r", function(d) {
+                    return d.size;
+                });
+            nodeEnter.append('defs')
+                .append('clipPath')
+                .attr('id', function(d, i) {
+                    return 'circle' + i;
+                })
+                .append('circle');
+            node.select('defs>clipPath>circle')
+                .attr("r", function(d) {
+                    return d.size / 1.2;
+                });
+            nodeEnter.append('image')
+                .attr('clip-path', function(d, i) {
+                    return 'url(#circle' + i + ')';
+                })
+                .attr('xlink:href', function(d) {
+                    return 'http://ddragon.leagueoflegends.com/cdn/5.2.1/img/item/' + d.id + '.png'
+                });
+            node.select('image')
+                .attr('width', function(d) {
+                    return 2 * d.size / 1.2;
+                })
+                .attr('height', function(d) {
+                    return 2 * d.size / 1.2;
+                })
+                .attr('x', function() {
+                    return -d3.select(this).attr('width') / 2;
+                })
+                .attr('y', function() {
+                    return -d3.select(this).attr('height') / 2;
+                });
 
-            node.exit().remove();
+            // because of the way the network is created, nodes are created first, and links second,
+            // so the lines were on top of the nodes, this just reorders the DOM to put the svg:g on top
+            $(".sendToTop").each(function(index) {
+                this.parentNode.appendChild(this);
+            });
 
             force.on("tick", function() {
                 node.attr("transform", function(d) {
@@ -146,11 +215,14 @@
 
             // Restart the force layout.
             force
-                .gravity(.01)
+                .gravity(.1)
                 .charge(-80000)
-                .friction(0)
+                .friction(0.1)
                 .linkDistance(function(d) {
-                    return d.value * 10
+                    return d.source.size + d.target.size + linkDistanceScale(findLink(d.source.id, d.target.id).value);
+                })
+                .linkStrength(function(d) {
+                    return linkStrengthScale(d.value);
                 })
                 .size([w, h])
                 .start();
@@ -162,28 +234,12 @@
     }
 
     var graph = createForce()
-        .addNode('Sophia')
-        .addNode('Daniel')
-        .addNode('Ryan')
-        .addNode('Lila')
-        .addNode('Suzie')
-        .addNode('Riley')
-        .addNode('Grace')
-        .addNode('Dylan')
-        .addNode('Mason')
-        .addNode('Emma')
-        .addNode('Alex')
-        .addLink('Alex', 'Ryan', '20')
-        .addLink('Sophia', 'Ryan', '20')
-        .addLink('Daniel', 'Ryan', '20')
-        .addLink('Ryan', 'Lila', '30')
-        .addLink('Lila', 'Suzie', '20')
-        .addLink('Suzie', 'Riley', '10')
-        .addLink('Suzie', 'Grace', '30')
-        .addLink('Grace', 'Dylan', '10')
-        .addLink('Dylan', 'Mason', '20')
-        .addLink('Dylan', 'Emma', '20')
-        .addLink('Emma', 'Mason', '10');
+        .addNode(1001, 50)
+        .addNode(3003, 25)
+        .addNode(3004, 25)
+        .addLink(1001, 3003, 0.1)
+        .addLink(3003, 3004, 1)
+        .editNode(1001, 10);
     </script>
 </body>
 
