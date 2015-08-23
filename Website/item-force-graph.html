@@ -1,5 +1,4 @@
----
----
+--- ---
 <!DOCTYPE html>
 <html>
 
@@ -14,27 +13,22 @@
         var graph = {
             nodes: [{
                 itemId: 0,
-                "name": "Myriel",
                 "group": 1,
                 frequency: 1
             }, {
                 itemId: 1,
-                "name": "Napoleon",
-                "group": 1,
+                "group": 2,
                 frequency: 1
             }, {
                 itemId: 2,
-                "name": "Mlle.Baptistine",
                 "group": 1,
                 frequency: 5
             }, {
                 itemId: 3,
-                "name": "Mme.Magloire",
                 "group": 1,
                 frequency: 1
             }, {
                 itemId: 4,
-                "name": "CountessdeLo",
                 "group": 1,
                 frequency: 1
             }, ],
@@ -61,11 +55,6 @@
             }, ]
         };
 
-        var nodes = graph.nodes.slice(),
-            links = [],
-            bilinks = [];
-
-
         var width = 640;
         var height = 480;
 
@@ -73,34 +62,16 @@
             .attr("width", width)
             .attr("height", height);
 
-        var focus;
-
         var color = d3.scale.category20();
-        var strengthScale = d3.scale.linear()
-            .domain([0, d3.max(graph.links.map(function(l) {
-                return l.value;
-            }))])
-            .range([0, 1]);
-        var force = d3.layout.force()
-            .charge(-250)
-            .size([width, height])
-            .linkDistance(function(l) {
-                return 10;
-            })
-            .linkStrength(function(l) {
-                if (focus) {
-                    if (l.source != focus && l.target != focus) {
-                        return 0.1;
-                    }
-                }
-                return strengthScale(l.value);
-            })
-            .start();
-
+        var nodes = graph.nodes.slice(),
+            links = [],
+            bilinks = [];
         graph.links.forEach(function(link) {
             var s = nodes[link.source],
                 t = nodes[link.target],
-                i = {}, // intermediate node
+                i = {
+                    invisible: true
+                }, // intermediate node
                 v = link.value;
             nodes.push(i);
             links.push({
@@ -114,69 +85,131 @@
             });
             bilinks.push([s, i, t, v]);
         });
+        var strengthScale = d3.scale.linear()
+            .domain([0, d3.max(graph.links.map(function(l) {
+                return l.value;
+            }))])
+            .range([0, 1]);
 
-        force
-            .nodes(nodes)
-            .links(links)
-            .start();
 
-        var link = svg.selectAll(".link")
-            .data(bilinks)
-            .enter()
-            .append("path")
-            .attr("class", "link")
-            .attr('stroke-width', function(l) {
-                return l[3];
-            });
+        var update = function() {
+            var force = d3.layout.force();
+            force
+                .nodes(nodes)
+                .links(links);
+            force.charge(function(n) {
+                    if (n.invisible) {
+                        return -100;
+                    }
+                    return -1000;
+                })
+                .friction(0.5)
+                .size([width, height])
+                .linkDistance(function(l) {
+                    return strengthScale(l.value) * 100;
+                })
+                .linkStrength(function(l) {
+                    return strengthScale(l.value);
+                });
 
-        var node = svg.selectAll(".node")
-            .data(graph.nodes)
-            .enter()
-            .append("g")
-            .attr("class", "node")
-            .call(force.drag);
-        node.append('circle')
-            .attr("r", function(d) {
-                return d.frequency * 6;
-            })
-            .style("fill", function(d) {
-                return color(d.group);
-            })
-        node.append('defs')
-            .append('clipPath')
-            .attr('id', function(d, i) {
-                return 'circle' + i;
-            })
-            .append('circle')
-            .attr('r', function(d) {
-                return d.frequency * 5;
-            });
-        node.append('image')
-            .attr('width', function(d) {
-                return d.frequency * 10;
-            })
-            .attr('height', function(d) {
-                return d.frequency * 10;
-            })
-            .attr('x', function() {
-                return -d3.select(this).attr('width') / 2;
-            })
-            .attr('y', function() {
-                return -d3.select(this).attr('height') / 2;
-            })
-            .attr('clip-path', function(d, i) {
-                return 'url(#circle' + i + ')';
-            })
-            .attr('xlink:href', 'http://ddragon.leagueoflegends.com/cdn/5.2.1/img/item/1001.png');
+            var linkUpdate = svg.selectAll(".link")
+                .data(bilinks);
+            var link = linkUpdate
+                .enter()
+                .append("path")
+                .attr("class", "link")
+                .attr('stroke-width', function(l) {
+                    return l[3];
+                });
+            linkUpdate.exit()
+                .transition()
+                .attr('stroke-width', 0)
+                .remove();
 
-        force.on("tick", function() {
-            link.attr("d", function(d) {
-                return "M" + d[0].x + "," + d[0].y + "S" + d[1].x + "," + d[1].y + " " + d[2].x + "," + d[2].y;
-            });
-            node.attr("transform", function(d) {
-                return "translate(" + d.x + "," + d.y + ")";
-            });
-        });
+            var nodeUpdate = svg.selectAll(".node")
+                .data(graph.nodes);
+            var node = nodeUpdate
+                .enter()
+                .append("g")
+                .attr("class", function() {
+                    return 'node';
+                })
+                .on('click', function(n) {
+                    nodes.forEach(function(aNode) {
+                        aNode.fixed = false
+                    })
+                    n.fixed = true;
+                    update();
+                })
+                .call(force.drag);
+            nodeUpdate.exit()
+                .select('g')
+                .transition()
+                .remove();
+            node.append('circle')
+                .attr("r", function(d) {
+                    return d.frequency * 6;
+                })
+                .style("fill", function(d) {
+                    return color(d.group);
+                });
+            nodeUpdate.exit()
+                .select('g circle')
+                .transition()
+                .attr('r', 0)
+                .remove();
+            node.append('defs')
+                .append('clipPath')
+                .attr('id', function(d, i) {
+                    return 'circle' + i;
+                })
+                .append('circle')
+                .attr('r', function(d) {
+                    return d.frequency * 5;
+                });
+            nodeUpdate.exit()
+                .select('g defs clipPath circle')
+                .transition()
+                .attr('r', function() {
+                    console.log('exitting');
+                    return 0;
+                })
+                .remove();
+            node.append('image')
+                .attr('width', function(d) {
+                    return d.frequency * 10;
+                })
+                .attr('height', function(d) {
+                    return d.frequency * 10;
+                })
+                .attr('x', function() {
+                    return -d3.select(this).attr('width') / 2;
+                })
+                .attr('y', function() {
+                    return -d3.select(this).attr('height') / 2;
+                })
+                .attr('clip-path', function(d, i) {
+                    return 'url(#circle' + i + ')';
+                })
+                .attr('xlink:href', 'http://ddragon.leagueoflegends.com/cdn/5.2.1/img/item/1001.png');
+            nodeUpdate.exit()
+                .select('g image')
+                .transition()
+                .remove();
+
+            force
+                .on("tick", function() {
+                    link.attr("d", function(d) {
+                        return "M" + d[0].x + "," + d[0].y + "S" + d[1].x + "," + d[1].y + " " + d[2].x + "," + d[2].y;
+                    });
+                    node.attr("transform", function(d) {
+                        return "translate(" + d.x + "," + d.y + ")";
+                    });
+                });
+
+            force.start();
+        };
+        update();
     };
 
     d3.select('body').call(createForce);
