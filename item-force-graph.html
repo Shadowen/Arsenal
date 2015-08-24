@@ -9,7 +9,7 @@
     <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script src="https://gitcdn.xyz/repo/MasterMaps/d3-slider/master/d3.slider.js"></script>
     <link rel='stylesheet' type='text/css' href="https://gitcdn.xyz/repo/MasterMaps/d3-slider/master/d3.slider.css">
-    <link rel='stylesheet' type='text/css' href='/css/force.css'>
+    <link rel='stylesheet' type='text/css' href='{{site.baseurl}}/css/force.css'>
 </head>
 
 <body>
@@ -350,7 +350,7 @@
                     return 'url(#circle' + i + ')';
                 })
                 .attr('xlink:href', function(d) {
-                    //return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
+                    return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
                 });
             node.select('image')
                 .attr('width', function(d) {
@@ -469,7 +469,7 @@
         );
 
     // Load data
-    $.getJSON('/data/itemCross.json').then(function(data) {
+    $.getJSON('{{site.baseurl}}/data/itemCross.json').then(function(data) {
         for (var i = 0; i < data.nodes.length; i++) {
             var node = data.nodes[i];
             graph.addNode(node.version, node.id, node.name, node.winRate);
