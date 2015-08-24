@@ -15,9 +15,21 @@ body {
     transform: scale(1.1, 1.1);
 }
 
+.tooltip {
+    pointer-events: none;
+}
+
+.tooltip-bg {
+    fill: rgba(0, 0, 0, 0.8);
+}
+
 .link {
     fill: none;
     stroke: #bbb;
+}
+
+text {
+    pointer-events: none;
 }
 
 .d3-slider {

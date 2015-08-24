@@ -6,9 +6,9 @@
 
 <head>
     <script src="http://d3js.org/d3.v3.min.js"></script>
-    <script src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
     <script src="https://gitcdn.xyz/repo/MasterMaps/d3-slider/master/d3.slider.js"></script>
-    <link rel='stylesheet' href="https://gitcdn.xyz/repo/MasterMaps/d3-slider/master/d3.slider.css">
+    <link rel='stylesheet' type='text/css' href="https://gitcdn.xyz/repo/MasterMaps/d3-slider/master/d3.slider.css">
     <link rel='stylesheet' type='text/css' href='/css/force.css'>
 </head>
 
@@ -16,10 +16,11 @@
     <script>
     function createForce() {
         var self = this;
-        self.addNode = function(version, id, size) {
+        self.addNode = function(version, id, name, size) {
             nodes.push({
                 version: version,
                 id: id,
+                name: name,
                 size: size,
                 focus: true,
                 visible: true,
@@ -181,14 +182,16 @@
                 .domain([0, largestLink])
                 .range([0, 1]);
             var strokeScale = d3.scale.pow()
+                .exponent(3)
                 .domain([smallestLink, largestLink])
                 .range([1, 10]);
-            var linkDistanceScale = d3.scale.pow()
+            var linkDistanceScale = d3.scale.linear()
                 .domain([smallestLink, largestLink])
                 .range([300, 70]);
             var nodeSizeScale = d3.scale.pow()
+                .exponent(2)
                 .domain([0, 1])
-                .range([10, 50]);
+                .range([0, 100]);
 
 
             refreshVisible();
@@ -200,7 +203,7 @@
 
             link.enter().append("line")
                 .attr("id", function(d) {
-                    return d.source.id + "-" + d.target.id;
+                    return d.source.version + ":" + d.source.id + "-" + d.target.version + ":" + d.target.id;
                 })
                 .classed("link", true)
                 .attr('stroke-width', 0);
@@ -224,7 +227,7 @@
             var nodeEnter = node.enter()
                 .append("g")
                 .classed("node", true)
-                .classed('sendToTop', true)
+                .classed('send-to-top', true)
                 .call(force.drag)
                 .on('dblclick', function(d) {
                     focused = !focused;
@@ -251,6 +254,34 @@
                     }
                     refreshVisible();
                     update();
+                })
+                .on('mouseenter', function(d) {
+                    var tooltip = d3.select(this).append("g")
+                        .classed('tooltip', true)
+                        .attr("transform", "translate(" + d3.mouse(this) + ")")
+                        .attr('opacity', 0);
+                    var text = tooltip.append('text')
+                        .attr('fill', 'rgba(255,255,0,1)')
+                        .text(d.name);
+                    var textBBox = text.node().getBBox();
+                    tooltip.append('rect')
+                        .classed('tooltip-bg', true)
+                        .attr('x', textBBox.x - 10)
+                        .attr('y', textBBox.y - 10)
+                        .attr('width', textBBox.width + 20)
+                        .attr('height', textBBox.height + 20)
+                        .attr('rx', 10)
+                        .attr('ry', 10);
+                    $(tooltip.node()).children('text').detach().appendTo(tooltip.node());
+                    tooltip
+                        .transition()
+                        .attr('opacity', 1);
+                })
+                .on('mouseleave', function(d) {
+                    d3.select(this).selectAll('g.tooltip')
+                        .transition()
+                        .attr('opacity', 0)
+                        .remove()
                 })
                 .append('g')
                 .classed('hover-scale', true);
@@ -297,7 +328,7 @@
                     return 'url(#circle' + i + ')';
                 })
                 .attr('xlink:href', function(d) {
-                    return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
+                    //return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
                 });
             node.select('image')
                 .attr('width', function(d) {
@@ -321,7 +352,7 @@
 
             // because of the way the network is created, nodes are created first, and links second,
             // so the lines were on top of the nodes, this just reorders the DOM to put the svg:g on top
-            $(".sendToTop").each(function(index) {
+            $(".send-to-top").each(function(index) {
                 this.parentNode.appendChild(this);
             });
 
@@ -419,7 +450,7 @@
     $.getJSON('/data/itemCross.json').then(function(data) {
         for (var i = 0; i < data.nodes.length; i++) {
             var node = data.nodes[i];
-            graph.addNode(node.version, node.id, node.winRate);
+            graph.addNode(node.version, node.id, node.name, node.winRate);
         };
         for (var i = 0; i < data.links.length; i++) {
             var link = data.links[i];
