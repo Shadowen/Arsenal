@@ -67,7 +67,6 @@
 
         self.setVersion = function(v) {
             version = v;
-            refreshVisible();
             return self;
         }
 
@@ -76,7 +75,6 @@
                 return linkMinimumValue;
             }
             linkMinimumValue = min;
-            refreshVisible();
             return self;
         }
 
@@ -187,6 +185,9 @@
             var nodeSizeScale = d3.scale.pow()
                 .domain([0, 1])
                 .range([10, 50]);
+
+
+            refreshVisible();
 
             var link = vis.selectAll("line")
                 .data(links, function(d) {
@@ -351,6 +352,7 @@
         };
 
         // Make it all go
+        setVersion('5.11');
         linkMinimum(0.3);
         update();
         return this;
@@ -359,15 +361,18 @@
     var graph = createForce()
         .appendTo(document.body);
 
-    d3.select('#min-link').call(d3.slider()
-        .scale(d3.scale.linear().domain([0, 1]))
-        .axis(d3.svg.axis())
-        .snap(true)
-        .value(graph.linkMinimum())
-        .on('slide', function(evt, value) {
-            graph.linkMinimum(value)
-                .update();
-        }));
+    d3.select($('<div>').prependTo('body')[0])
+        .call(d3.slider()
+            .scale(d3.scale.linear().domain([0, 1]))
+            .axis(d3.svg.axis())
+            .snap(true)
+            .value(graph.linkMinimum())
+            .on('slide', function(evt, value) {
+                graph
+                    .linkMinimum(value)
+                    .update();
+            })
+        );
 
     $.getJSON('/data/itemCross.json').then(function(data) {
         for (var i = 0; i < data.nodes.length; i++) {
@@ -379,7 +384,6 @@
             graph.addLink(link.version, link.source, link.target, link.value);
         };
         graph
-            .setVersion('5.11')
             .update();
     });
     </script>
