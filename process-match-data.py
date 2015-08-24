@@ -69,6 +69,27 @@ try:
 						event.type = 'ITEM_SOLD' OR 
 						event.type = 'ITEM_UNDO'
 					ORDER BY event.timestamp''')
+		# Item stats
+	c.execute('''CREATE VIEW itemStat AS 
+	SELECT [match].version,
+       item.id,
+       AVG(team.winner)
+  FROM participant
+       LEFT JOIN
+       [match] ON participant.matchId = [match].id
+       LEFT JOIN
+       team ON [match].id = team.matchId AND 
+               participant.teamId = team.id
+       LEFT JOIN
+       participantItem ON [match].id = participantItem.matchId AND 
+                          participant.id = participantItem.participantId
+       LEFT JOIN
+       item ON [match].version = item.version AND 
+               participantItem.itemId = item.id
+ GROUP BY [match].version,
+          item.id;
+''')
+	print('Item efficiency analysis complete')
 	# c.execute('''CREATE VIEW itemPurchaseDestroy AS
 	# 	SELECT purchase.matchId,
 	# 		purchase.participantId,
@@ -429,33 +450,6 @@ try:
 			WHERE championStat.version = match.version AND championStat.championId = ban.championId
 			)''')
 	print('Champion power determined')
-
-	# Item stats
-	c.execute('''CREATE TABLE itemStat (
-			version TEXT,
-			itemId INTEGER,
-			timesBought INTEGER,
-			winRate REAL,
-			goldThreshold REAL,
-			FOREIGN KEY (version, itemId) REFERENCES item(version, id)
-		)''')
-	c.execute('''INSERT INTO itemStat (version, itemId, timesBought, goldThreshold)
-			SELECT match.version, participantItem.itemId, COUNT(*), AVG(participantItem.goldThreshold)
-			FROM participant
-			LEFT JOIN participantItem ON participant.matchId = participantItem.matchId AND participant.id = participantItem.participantId
-			LEFT JOIN match ON participant.matchId = match.id
-			LEFT JOIN team ON participant.matchId = team.matchId AND participant.teamId = team.id
-			GROUP BY match.version, participantItem.itemId''', ())
-	c.execute('''UPDATE itemStat
-		SET winRate = (SELECT AVG(team.winner)
-			FROM participant
-			LEFT JOIN match ON participant.matchId = match.id
-			LEFT JOIN team ON match.id = team.matchId AND participant.teamId = team.id
-			LEFT JOIN participantItem ON match.id = participantItem.matchId AND participant.id = participantItem.participantId
-			WHERE itemStat.version = match.version AND itemStat.itemId = participantItem.itemId
-			GROUP BY participant.id
-			)''')
-	print('Item efficiency analysis complete')
 
 	# Player stats
 	c.execute('''CREATE TABLE playerChampion (

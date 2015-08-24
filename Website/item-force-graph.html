@@ -1,5 +1,4 @@
----
----
+--- ---
 <!DOCTYPE html>
 <html>
 
@@ -103,8 +102,8 @@
         }
 
         // set up the D3 visualisation in the specified element
-        var w = 960,
-            h = 450;
+        var w = $('body').width(),
+            h = $('body').height();
 
         var color = d3.scale.category10();
 
@@ -153,6 +152,9 @@
             var linkDistanceScale = d3.scale.pow()
                 .domain([smallestLink, largestLink])
                 .range([300, 10]);
+            var nodeSizeScale = d3.scale.pow()
+                .domain([0, 1])
+                .range([0, 50]);
 
             var link = vis.selectAll("line")
                 .data(links, function(d) {
@@ -228,7 +230,7 @@
             node.select('circle')
                 .transition()
                 .attr("r", function(d) {
-                    return d.size;
+                    return nodeSizeScale(d.size);
                 });
             node.exit().select('circle')
                 .transition()
@@ -243,7 +245,7 @@
             node.select('defs>clipPath>circle')
                 .transition()
                 .attr("r", function(d) {
-                    return d.size / 1.2;
+                    return nodeSizeScale(d.size) / 1.2;
                 });
             node.exit().select('defs>clipPath>circle')
                 .transition()
@@ -253,14 +255,14 @@
                     return 'url(#circle' + i + ')';
                 })
                 .attr('xlink:href', function(d) {
-                    return 'http://ddragon.leagueoflegends.com/cdn/5.2.1/img/item/' + d.id + '.png'
+                    return 'http://ddragon.leagueoflegends.com/cdn/5.11.1/img/item/' + d.id + '.png'
                 });
             node.select('image')
                 .attr('width', function(d) {
-                    return 2 * d.size / 1.2;
+                    return 2 * nodeSizeScale(d.size) / 1.2;
                 })
                 .attr('height', function(d) {
-                    return 2 * d.size / 1.2;
+                    return 2 * nodeSizeScale(d.size) / 1.2;
                 })
                 .attr('x', function() {
                     return -d3.select(this).attr('width') / 2;
@@ -302,8 +304,8 @@
 
             // Restart the force layout.
             force
-                .gravity(1)
-                .charge(-80000)
+                .gravity(0.1)
+                .charge(-8000)
                 .friction(0.1)
                 .linkDistance(function(d) {
                     return d.source.size + d.target.size + linkDistanceScale(findLink(d.source.id, d.target.id).value);
@@ -313,7 +315,7 @@
                 })
                 .size([w, h])
                 .start();
-            return this;
+            return self;
         };
 
         // Make it all go
@@ -322,14 +324,23 @@
     }
 
     var graph = createForce()
-        .addNode(1001, 50)
-        .addNode(3003, 25)
-        .addNode(3004, 25)
-        .addLink(1001, 3003, 0.1)
-        .addLink(3003, 3004, 1)
-        .editNode(1001, 10)
-        .appendTo(document.body)
-        .update();
+        .appendTo(document.body);
+
+    $.getJSON('/data/itemCross.json').then(function(data) {
+        for (var i = 0; i < data.nodes.length; i++) {
+            var node = data.nodes[i];
+            if (node.version == "5.11") {
+                graph.addNode(node.id, node.winRate);
+            }
+        };
+        for (var i = 0; i < data.links.length; i++) {
+            var link = data.links[i];
+            if (link.version == "5.11") {
+                graph.addLink(link.source, link.target, link.value);
+            }
+        };
+        graph.update();
+    });
     </script>
 </body>
 

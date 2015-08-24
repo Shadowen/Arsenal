@@ -1,6 +1,4 @@
----
----
-
+--- ---
 <!DOCTYPE html>
 <html>
 
@@ -19,6 +17,7 @@
         }
     };
     </script>
+    <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
     <link rel='stylesheet' type='text/css' href='/css/styles.css'>
 </head>
 
@@ -62,11 +61,21 @@
             }))])
             .range([0, halfWidth - centerOffset - margins.sides]);
 
+
+        var tip = d3.tip()
+            .attr('class', 'd3-tip')
+            .offset([-10, 0])
+            .html(function(d, i, a) {
+                console.log(d, i, a)
+                return "<strong>Frequency:</strong> <span style='color:red'>" + d.values[a] + "</span>";
+            });
+
         var svg = parent
             .append('svg')
             .classed('chart', true)
             .attr("width", width)
             .attr("height", height);
+        svg.call(tip);
         var chart = svg.append("g")
             .attr("transform", "translate(0," + margins.top + ")");
         var titleElement = chart.append('text')
@@ -115,6 +124,9 @@
             .attr('x', centerOffset)
             .attr('y', barSpacing / 2)
             .attr('width', 0)
+            .on('mouseover', tip.show)
+            .on('mouseout', tip.hide);
+        bars
             .transition()
             .delay(function(d, i) {
                 return i * 300;

@@ -12,7 +12,7 @@
 }
 
 .chart .box-left.active {
-    fill: rgba(95,158,168, 0.9);
+    fill: rgba(95, 158, 168, 0.9);
 }
 
 .chart .box-right {
@@ -27,8 +27,9 @@
     fill: rgba(0, 0, 200, 0.2);
     stroke: rgba(0, 0, 200, 0.5);
 }
-.chart .center-fill.active{
-    fill:rgba(0,0,200,0.4);
+
+.chart .center-fill.active {
+    fill: rgba(0, 0, 200, 0.4);
     stroke: rgba(0, 0, 200, 0.7);
 }
 
@@ -36,7 +37,7 @@
     font: 60px sans-serif;
 }
 
-.chart :not(a) text {
+.chart:not(a) text {
     fill: white;
     pointer-events: none;
 }
