@@ -31,7 +31,10 @@ try:
 	c.execute('''SELECT [match].version,
        item1 AS item1Id,
        item2 AS item2Id,
-       COUNT() 
+       CAST (COUNT() AS FLOAT) / (
+                                     SELECT COUNT(DISTINCT id) 
+                                       FROM [match]
+                                 )
   FROM (
            SELECT i1.matchId,
                   i1.participantId,
