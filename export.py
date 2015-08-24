@@ -14,10 +14,10 @@ conn = sqlite3.connect('database.db')
 c = conn.cursor()
 try:
 	data = {}
-	# Nodes
+# Nodes
 	c.execute('''SELECT itemStat.version, itemStat.id, item.name, itemStat.winRate
 		FROM itemStat
-		LEFT JOIN item ON itemStat.version = item.version AND itemStat.id = item.id;
+		LEFT JOIN item ON itemStat.version = item.version AND itemStat.id = item.id
 		''')
 	def nodesToDict(node):
 		return {
@@ -35,7 +35,7 @@ try:
                                      SELECT COUNT(DISTINCT id) 
                                        FROM [match]
                                  )
-  FROM (
+			FROM (
            SELECT i1.matchId,
                   i1.participantId,
                   i1.itemId AS item1,

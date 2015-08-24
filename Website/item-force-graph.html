@@ -1,4 +1,6 @@
---- ---
+---
+<!--: -->
+---
 <!DOCTYPE html>
 <html>
 
@@ -11,7 +13,6 @@
 </head>
 
 <body>
-    <div id='min-link'></div>
     <script>
     function createForce() {
         var self = this;
@@ -31,23 +32,23 @@
             return self;
         }
 
-        self.removeNode = function(id) {
+        self.removeNode = function(version, id) {
             var i = 0;
-            var n = findNode(id);
+            var n = findNode(version, id);
             while (i < links.length) {
                 if ((links[i]['source'] == n) || (links[i]['target'] == n)) {
                     links.splice(i, 1);
                 } else i++;
             }
-            nodes.splice(findNodeIndex(id), 1);
+            nodes.splice(findNodeIndex(version, id), 1);
             return self;
         };
 
         self.addLink = function(version, source, target, strength) {
             links.push({
                 version: version,
-                "source": findNode(source),
-                "target": findNode(target),
+                "source": findNode(version, source),
+                "target": findNode(version, target),
                 "value": strength,
                 focus: true,
                 visible: true
@@ -65,8 +66,11 @@
             return self;
         }
 
-        self.setVersion = function(v) {
-            version = v;
+        self.version = function(v) {
+            if (typeof arguments[0] === 'undefined') {
+                return versionValue;
+            }
+            versionValue = v;
             return self;
         }
 
@@ -82,7 +86,7 @@
             // Links
             for (var linkNum = 0; linkNum < links.length; linkNum++) {
                 var l = links[linkNum];
-                if (l.version !== version) {
+                if (l.version !== versionValue) {
                     l.visible = false;
                 } else if (l.value < linkMinimumValue) {
                     l.visible = false;
@@ -95,7 +99,7 @@
             // Nodes
             for (var i = 0; i < nodes.length; i++) {
                 var n = nodes[i];
-                if (n.version !== version) {
+                if (n.version !== versionValue) {
                     n.visible = false;
                 } else if (n.focus === false) {
                     n.visible = false;
@@ -109,17 +113,17 @@
             }
         }
 
-        var findNode = function(id) {
+        var findNode = function(version, id) {
             for (var i = 0; i < nodes.length; i++) {
-                if (nodes[i]["id"] === id) {
+                if (nodes[i].id === id && nodes[i].version === version) {
                     return nodes[i];
                 }
             };
         };
 
-        var findNodeIndex = function(id) {
+        var findNodeIndex = function(version, id) {
             for (var i = 0; i < nodes.length; i++) {
-                if (nodes[i].id == id) {
+                if (nodes[i].id == id && nodes[i].version === version) {
                     return i;
                 }
             };
@@ -153,8 +157,8 @@
         var color = d3.scale.category10();
 
         var svg = d3.select(document.createElementNS("http://www.w3.org/2000/svg", "svg"))
-            .attr("width", w)
-            .attr("height", h);
+            .attr("width", '100%')
+            .attr("height", '100%');
         var vis = svg
             .append('svg:g');
 
@@ -164,7 +168,7 @@
             links = force.links();
 
         var focused = false;
-        var version;
+        var versionValue;
         var linkMinimumValue;
 
         self.update = function() {
@@ -191,7 +195,7 @@
 
             var link = vis.selectAll("line")
                 .data(links, function(d) {
-                    return d.source.id + "-" + d.target.id;
+                    return d.source.version + ":" + d.source.id + "-" + d.target.version + ":" + d.target.id;
                 });
 
             link.enter().append("line")
@@ -202,6 +206,9 @@
                 .attr('stroke-width', 0);
             link
                 .transition()
+                .attr('visibility', function(d) {
+                    return d.visible ? 'visible' : 'hidden';
+                })
                 .attr("stroke-width", function(d) {
                     return d.visible ? strokeScale(d.value) : 0;
                 });
@@ -212,7 +219,7 @@
 
             var node = vis.selectAll("g.node")
                 .data(nodes, function(d) {
-                    return d.id;
+                    return d.version + ":" + d.id;
                 });
             node.exit()
                 .transition()
@@ -288,7 +295,7 @@
                     return 'url(#circle' + i + ')';
                 })
                 .attr('xlink:href', function(d) {
-                    return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
+                    //return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
                 });
             node.select('image')
                 .attr('width', function(d) {
@@ -337,31 +344,41 @@
 
             // Restart the force layout.
             force
-                .gravity(0.1)
-                .charge(-10000)
+                .gravity(1)
+                .charge(function(d) {
+                    return d.visible ? -30000 : 1;
+                })
                 .friction(0.1)
                 .linkDistance(function(d) {
                     return d.source.size + d.target.size + linkDistanceScale(findLink(d.source.id, d.target.id).value);
                 })
                 .linkStrength(function(d) {
-                    return linkStrengthScale(d.value);
+                    return d.visible ? linkStrengthScale(d.value) : 0;
                 })
-                .size([w, h])
+                .size([+svg.style('width').replace('px', ''), +svg.style('height').replace('px', '')])
                 .start();
             return self;
         };
 
         // Make it all go
-        setVersion('5.11');
-        linkMinimum(0.3);
-        update();
-        return this;
+        return self.version('5.14')
+            .linkMinimum(0.3);
     }
 
     var graph = createForce()
         .appendTo(document.body);
+    $(function() {
+        $(window).resize(function() {
+            graph.update();
+        });
+    });
 
+    // Link minimum slider
     d3.select($('<div>').prependTo('body')[0])
+        .style('position', 'absolute')
+        .style('width', '70%')
+        .style('left', '20px')
+        .append('div')
         .call(d3.slider()
             .scale(d3.scale.linear().domain([0, 1]))
             .axis(d3.svg.axis())
@@ -372,8 +389,30 @@
                     .linkMinimum(value)
                     .update();
             })
-        );
+        )
+        .style('margin-bottom', 25);
 
+    // Version slider
+    d3.select($('<div>').prependTo('body')[0])
+        .style('position', 'absolute')
+        .style('width', '20%')
+        .style('top', '60px')
+        .style('left', '20px')
+        .append('div')
+        .call(d3.slider()
+            .scale(d3.scale.ordinal()
+                .domain([5.11, 5.14])
+                .rangePoints([0, 1], 0.5))
+            .axis(d3.svg.axis())
+            .value(graph.version())
+            .on('slide', function(evt, value) {
+                graph.version('' + value)
+                    .update();
+            })
+        )
+        .style('margin-bottom', 25);
+
+    // Load data
     $.getJSON('/data/itemCross.json').then(function(data) {
         for (var i = 0; i < data.nodes.length; i++) {
             var node = data.nodes[i];
@@ -383,8 +422,7 @@
             var link = data.links[i];
             graph.addLink(link.version, link.source, link.target, link.value);
         };
-        graph
-            .update();
+        graph.update();
     });
     </script>
 </body>

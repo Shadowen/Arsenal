@@ -8,6 +8,8 @@ import sqlite3
 import traceback
 import math
 import time
+from functools import reduce
+
 from collections import defaultdict
 # Init
 http = urllib3.PoolManager(
@@ -73,7 +75,7 @@ try:
 	c.execute('''CREATE VIEW itemStat AS 
 	SELECT [match].version,
        item.id,
-       AVG(team.winner)
+       AVG(team.winner) AS winRate
   FROM participant
        LEFT JOIN
        [match] ON participant.matchId = [match].id
@@ -128,16 +130,17 @@ try:
 		items = []
 		playerActions = []
 		idx = 0
-		print(matchId, participantId)
-		# Kalista's Black Spear
 		if championId == 429:
+			# Kalista's Black Spear
 			items.append((3599, 0, 0))
+		elif championId == 112:
+			# Viktor's Hex Core
+			items.append((3200, 0, 0))
 		while idx < len(events):
 			# Init
 			event = events[idx]
 			eventType = event[0]
 			item = (event[1], event[2], event[3])
-			print(eventType, item)
 			# Conditions
 			if eventType == 'ITEM_PURCHASED':
 				items.append(item)
@@ -169,7 +172,6 @@ try:
 				if action[0] == 'buy':
 					# Undo buy
 					items.pop(list(zip(*items))[0].index(action[1][0]))
-					print(action[2])
 					items.extend(action[2])
 				elif action[0] == 'sell':
 					# Undo sell
@@ -177,10 +179,17 @@ try:
 			# Increment
 			idx += 1
 
-		if len(items) > 7:
+		def collapseStackables(prev, curr):
+			# HPot, MPot, Biscuit, Ward, VWard
+			stackables = [2003, 2004, 2010, 2044, 2043]
+			if curr in prev and curr in stackables:
+				return prev
+			return prev + [curr]
+		if len(reduce(collapseStackables, map(lambda i: i[0], items), [])) > 7:
 			print('Participant #{} in match {} has too many items!'.format(participantId, matchId))
 			print(list(zip(*items))[0])
 			raise "Error"
+
 		for (itemId, timeBought, goldThreshold) in items:
 			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, goldThreshold)
 				VALUES (?, ?, ?, ?, ?)''',
@@ -190,8 +199,7 @@ try:
 	# RoA
 	c.execute('''SELECT matchId, participantId, timeBought
 		FROM participantItem
-		WHERE participantItem.itemId = 3027
-		GROUP BY matchId''')
+		WHERE participantItem.itemId = 3027''')
 	storedMatchId = -1
 	for (matchId, participantId, timeBought) in c.fetchall():
 		# Cache matchDuration to minimize additional queries
@@ -251,8 +259,7 @@ try:
 	conn.create_aggregate("maxStacks", 4, maxStacks)
 	c.execute('''SELECT matchId, participantId, timeBought
 		FROM participantItem
-		WHERE participantItem.itemId = 3041
-		GROUP BY matchId''')
+		WHERE participantItem.itemId = 3041''')
 	for (matchId, participantId, timeBought) in c.fetchall():
 		# Calculate the final number of stacks
 		c.execute('''SELECT ?, event.killerId, event.victimId, assist.participantId
@@ -295,7 +302,7 @@ try:
 	conn.create_function("stacksToAp", 2, stacksToAp)
 	c.execute('''SELECT participant.matchId,
 						participant.id,
-						TOTAL(item.flatAp + stacksToAp(item.id, participantItem.finalStacks) ),
+						TOTAL(item.flatAp + stacksToAp(item.id, participantItem.finalStacks)),
 						MAX(item.percentAp) 
 				FROM participant
 					LEFT JOIN

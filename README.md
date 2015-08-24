@@ -9,3 +9,7 @@
 3. Run `create-match-database.py` to initialize the database schema.
 4. Run `populate-match-database.py` to actually make the requests to the Riot API.
 5. Run `process-match-data.py` to add value to data.
+6. Run `export.py` to export data to JSON files.
+
+# Website Build Process
+1. Run `jekyll serve` to build the website.
