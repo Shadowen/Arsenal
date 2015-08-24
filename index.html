@@ -1,0 +1,20 @@
+---
+<!--: -->
+---
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src='/js/d3.min.js'></script>
+    <link rel='stylesheet' type='text/css' href='/css/styles.css'>
+</head>
+
+<body>
+    <ul>
+        {% for p in site.pages %}
+        <li><a href="{{ p.url }}">{{p.path}}</a></li>
+        {% endfor %}
+    </ul>
+</body>
+
+</html>
