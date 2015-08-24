@@ -221,9 +221,6 @@
                 .data(nodes, function(d) {
                     return d.version + ":" + d.id;
                 });
-            node.exit()
-                .transition()
-                .remove();
             var nodeEnter = node.enter()
                 .append("g")
                 .classed("node", true)
@@ -254,7 +251,12 @@
                     }
                     refreshVisible();
                     update();
-                });
+                })
+                .append('g')
+                .classed('hover-scale', true);
+            node.exit()
+                .transition()
+                .remove();
             nodeEnter.append("svg:circle")
                 .attr("id", function(d) {
                     return "Node;" + d.id;
@@ -295,7 +297,7 @@
                     return 'url(#circle' + i + ')';
                 })
                 .attr('xlink:href', function(d) {
-                    //return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
+                    return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
                 });
             node.select('image')
                 .attr('width', function(d) {
@@ -365,8 +367,11 @@
             .linkMinimum(0.3);
     }
 
+    $('<svg>').attr('id', 'theSvg')
+        .appendTo('body');
+
     var graph = createForce()
-        .appendTo(document.body);
+        .appendTo($('#theSvg')[0]);
     $(function() {
         $(window).resize(function() {
             graph.update();
@@ -374,7 +379,7 @@
     });
 
     // Link minimum slider
-    d3.select($('<div>').prependTo('body')[0])
+    d3.select($('<div>').prependTo('#theSvg')[0])
         .style('position', 'absolute')
         .style('width', '70%')
         .style('left', '20px')
@@ -389,11 +394,10 @@
                     .linkMinimum(value)
                     .update();
             })
-        )
-        .style('margin-bottom', 25);
+        );
 
     // Version slider
-    d3.select($('<div>').prependTo('body')[0])
+    d3.select($('<div>').prependTo('#theSvg')[0])
         .style('position', 'absolute')
         .style('width', '20%')
         .style('top', '60px')
@@ -409,8 +413,7 @@
                 graph.version('' + value)
                     .update();
             })
-        )
-        .style('margin-bottom', 25);
+        );
 
     // Load data
     $.getJSON('/data/itemCross.json').then(function(data) {

@@ -1,4 +1,5 @@
 ---
+<!--: -->
 ---
 <!DOCTYPE html>
 <html>
@@ -9,11 +10,11 @@
 </head>
 
 <body>
-<ul>
-    {% for p in site.pages %}
-    <li><a href="{{ p.url }}">{{p.path}}</a></li>
-    {% endfor %}
-</ul>
+    <ul>
+        {% for p in site.pages %}
+        <li><a href="{{ p.url }}">{{p.path}}</a></li>
+        {% endfor %}
+    </ul>
 </body>
 
 </html>

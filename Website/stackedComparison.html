@@ -1,4 +1,5 @@
 ---
+<!--: -->
 ---
 <!DOCTYPE html>
 <html>
@@ -155,18 +156,18 @@
                 rowUpdate.select('text')
                     .transition()
                     .duration(500)
-                    .attr('transform', function(d){
+                    .attr('transform', function(d) {
                         var translation = 'translate(0, ' + (yOffset + (d.values[0] + d.values[1]) / 4) + ')';
                         yOffset += d3.max(d.values);
                         return translation;
                     })
-                    .text(function(d){
+                    .text(function(d) {
                         return d.title;
                     });
                 rowUpdate.exit()
-                .select('text')
-                .transition()
-                .remove();
+                    .select('text')
+                    .transition()
+                    .remove();
                 var boxUpdate = rowUpdate.selectAll('rect')
                     .data(function(d) {
                         return d.values;
@@ -203,7 +204,7 @@
                         var transform = 'translate(0, ' + (yOffset) + ')';
                         offset.push(d);
                         even = !even;
-                        if (even){
+                        if (even) {
                             yOffset += d3.max(offset);
                             offset = [];
                         }
@@ -279,7 +280,7 @@
                         var points = [
                             [-centerSpacing, leftOffset],
                             [centerSpacing, rightOffset],
-                            [centerSpacing, rightOffset += d.values[1]] ,
+                            [centerSpacing, rightOffset += d.values[1]],
                             [-centerSpacing, leftOffset += d.values[0]]
                         ];
                         return points.map(function(point) {
@@ -310,7 +311,7 @@
                 rowUpdate.select('text')
                     .transition()
                     .duration(500)
-                    .attr('transform', function(d){
+                    .attr('transform', function(d) {
                         leftOffset += d.values[0] / 2;
                         rightOffset += d.values[1] / 2;
                         var translation = 'translate(0, ' + (leftOffset + rightOffset) / 2 + ')';
@@ -318,13 +319,13 @@
                         rightOffset += d.values[1] / 2;
                         return translation;
                     })
-                    .text(function(d){
+                    .text(function(d) {
                         return d.title;
                     });
                 rowUpdate.exit()
-                .select('text')
-                .transition()
-                .remove();
+                    .select('text')
+                    .transition()
+                    .remove();
                 var boxUpdate = rowUpdate.selectAll('rect')
                     .data(function(d) {
                         return d.values;
@@ -374,7 +375,7 @@
         }
         var updateButton = svg.append('a')
             .attr('xlink:href', '#')
-            .on('click', function(){
+            .on('click', function() {
                 mode = mode == exploded ? stacked : exploded;
                 update();
             })
