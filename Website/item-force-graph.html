@@ -81,22 +81,7 @@
         }
 
         var refreshVisible = function() {
-            for (var i = 0; i < nodes.length; i++) {
-                var n = nodes[i];
-                if (n.version !== version) {
-                    n.visible = false;
-                } else if (n.focus === false) {
-                    n.visible = false;
-                } else if (!findNodeLinks(n).map(function(l) {
-                        return l.value;
-                    }).reduce(function(prev, curr) {
-                        return prev || curr >= linkMinimumValue;
-                    }, false)) {
-                    n.visible = false;
-                } else {
-                    n.visible = true;
-                }
-            }
+            // Links
             for (var linkNum = 0; linkNum < links.length; linkNum++) {
                 var l = links[linkNum];
                 if (l.version !== version) {
@@ -107,6 +92,21 @@
                     l.visible = false;
                 } else {
                     l.visible = true;
+                }
+            }
+            // Nodes
+            for (var i = 0; i < nodes.length; i++) {
+                var n = nodes[i];
+                if (n.version !== version) {
+                    n.visible = false;
+                } else if (n.focus === false) {
+                    n.visible = false;
+                } else if (!findNodeLinks(n).reduce(function(prev, curr) {
+                        return prev || curr.visible;
+                    }, false)) {
+                    n.visible = false;
+                } else {
+                    n.visible = true;
                 }
             }
         }
@@ -222,7 +222,8 @@
                 .classed('sendToTop', true)
                 .call(force.drag)
                 .on('dblclick', function(d) {
-                    if (focused) {
+                    focused = !focused;
+                    if (!focused) {
                         for (var i = 0; i < nodes.length; i++) {
                             nodes[i].focus = true;
                         }
@@ -232,21 +233,17 @@
                     } else {
                         // Focus an element
                         for (var i = 0; i < nodes.length; i++) {
-                            var n = nodes[i];
-                            var nLink = findLink(d.id, n.id);
-                            // Remove a node
-                            if (d.id != n.id && nLink == null) {
-                                // Remove and store all links
-                                for (var linkNum = 0; linkNum < links.length; linkNum++) {
-                                    if ((links[linkNum]['source'] == n) || (links[linkNum]['target'] == n)) {
-                                        links[linkNum].focus = false;
-                                    }
-                                }
-                                n.focus = false;
-                            }
+                            nodes[i].focus = false;
                         }
+                        for (var linkNum = 0; linkNum < links.length; linkNum++) {
+                            links[linkNum].focus = false;
+                        }
+                        findNodeLinks(d).forEach(function(l) {
+                            l.focus = true;
+                            l.source.focus = true;
+                            l.target.focus = true;
+                        })
                     }
-                    focused = !focused;
                     refreshVisible();
                     update();
                 });
@@ -258,9 +255,12 @@
                 .attr('r', 0);
             node.select('circle')
                 .attr("fill", function(d) {
-                    return d.visible ? color(d.id) : 'none';
+                    return color(d.id);
                 })
                 .transition()
+                .attr('visiblility', function(d) {
+                    return d.visible ? 'visible' : 'hidden';
+                })
                 .attr("r", function(d) {
                     return d.visible ? nodeSizeScale(d.size) : 0;
                 });
