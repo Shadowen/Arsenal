@@ -17,13 +17,11 @@
                 id: id,
                 size: size
             });
-            update();
             return self;
         };
 
         self.editNode = function(id, size) {
             findNode(id).size = size;
-            update();
             return self;
         }
 
@@ -36,7 +34,6 @@
                 } else i++;
             }
             nodes.splice(findNodeIndex(id), 1);
-            update();
             return self;
         };
 
@@ -46,24 +43,16 @@
                 "target": findNode(target),
                 "value": strength
             });
-            update();
             return self;
         };
 
         self.editLink = function(source, target, strength) {
             findLink(source, target).value = strength;
-            update();
             return self;
         }
 
-        self.removeLink = function(source, target) {
-            update();
-            return self;
-        };
-
         self.appendTo = function(parent) {
             parent.appendChild(svg[0][0]);
-            update();
             return self;
         }
 
@@ -154,7 +143,7 @@
                 .range([300, 10]);
             var nodeSizeScale = d3.scale.pow()
                 .domain([0, 1])
-                .range([0, 50]);
+                .range([10, 50]);
 
             var link = vis.selectAll("line")
                 .data(links, function(d) {
