@@ -131,11 +131,19 @@
             return null;
         }
 
-        var findNodeLinks = function(source) {
+        var findNodeLinks = function(source, bothVersions) {
             var retLinks = [];
-            for (var i = 0; i < allLinks.length; i++) {
-                if (allLinks[i].source == source || allLinks[i].target == source) {
-                    retLinks.push(allLinks[i]);
+            if (bothVersions) {
+                for (var i = 0; i < allLinks.length; i++) {
+                    if (allLinks[i].source.id == source.id || allLinks[i].target.id == source.id) {
+                        retLinks.push(allLinks[i]);
+                    }
+                }
+            } else {
+                for (var i = 0; i < allLinks.length; i++) {
+                    if (allLinks[i].source == source || allLinks[i].target == source) {
+                        retLinks.push(allLinks[i]);
+                    }
                 }
             }
             return retLinks;
@@ -267,11 +275,11 @@
                         for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
                             allLinks[linkNum].focus = false;
                         }
-                        findNodeLinks(d).forEach(function(l) {
+                        findNodeLinks(d, true).forEach(function(l) {
                             l.focus = true;
                             l.source.focus = true;
                             l.target.focus = true;
-                        })
+                        });
                     }
                     refreshVisible();
                     update();
