@@ -170,7 +170,7 @@
 
         var nodeColor = d3.scale.category20();
         var linkColor = d3.scale.category20c();
-        var unfocusedOpacity = 0.3
+        var unfocusedOpacity = 0.1;
         var tooltipTextPadding = 10;
 
         // set up the D3 visualisation in the specified element
@@ -294,6 +294,9 @@
                     update();
                 })
                 .on('mouseenter', function(d) {
+                    if (!d.focus) {
+                        return;
+                    }
                     var tooltip = svg.append("g")
                         .classed('tooltip', true)
                         .attr('opacity', 0);
@@ -322,12 +325,18 @@
                         .attr('opacity', 1);
                 })
                 .on('mousemove', function(d) {
+                    if (!d.focus) {
+                        return;
+                    }
                     var textBBox = svg.selectAll('g.tooltip text')
                         .node().getBBox();
                     svg.selectAll('g.tooltip')
                         .attr("transform", "translate(" + (d.x + d3.mouse(this)[0] + tooltipTextPadding) + ', ' + (d.y + d3.mouse(this)[1] - tooltipTextPadding - textBBox.height) + ")");
                 })
                 .on('mouseleave', function(d) {
+                    if (!d.focus) {
+                        return;
+                    }
                     svg.selectAll('g.tooltip')
                         .transition()
                         .attr('opacity', 0)
@@ -381,7 +390,7 @@
                     return 'url(#circle' + i + ')';
                 })
                 .attr('xlink:href', function(d) {
-                    // return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
+                    return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
                 });
             node.select('image')
                 .transition()
@@ -448,7 +457,7 @@
                 })
                 // Invisible nodes do not interact
                 .linkStrength(function(d) {
-                    return d.visible ? linkStrengthScale(d.value) : 0;
+                    return d.visible ? d.focus ? linkStrengthScale(d.value) : linkStrengthScale(d.value) / 2 : 0;
                 })
                 // Set the size to current svg size
                 .size([+svg.style('width').replace('px', ''), +svg.style('height').replace('px', '')])
@@ -497,7 +506,7 @@
         .classed('trans-bg', true)
         .style('pointer-events', 'none')
         .style('position', 'absolute')
-        .style('width', '50%')
+        .style('width', '38%')
         .style('bottom', '20px')
         .style('right', '20px')
         .style('font-size', 'smaller')
@@ -527,10 +536,11 @@
         .style('position', 'absolute')
         .style('top', '50px')
         .text('Minimum co-occurance rate')
+    var linkMinDisplay = d3.scale.linear().domain([0, 1]).range([0, 1]);
     linkMinSlider.append('div')
         .call(d3.slider()
-            .scale(d3.scale.linear().domain([0, 1]))
-            .axis(d3.svg.axis())
+            .scale(linkMinDisplay)
+            .axis(true)
             .snap(true)
             .value(graph.linkMinimum())
             .on('slide', function(evt, value) {
