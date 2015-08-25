@@ -5,14 +5,592 @@
 <html>
 
 <head>
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="https://gitcdn.xyz/repo/MasterMaps/d3-slider/master/d3.slider.js"></script>
+    <link rel='stylesheet' type='text/css' href="https://gitcdn.xyz/repo/MasterMaps/d3-slider/master/d3.slider.css">
+    <link rel='stylesheet' type='text/css' href='{{site.baseurl}}/css/force.css'>
 </head>
 
 <body>
-    <ul>
-        {% for p in site.pages %}
-        <li><a href="{{ site.baseurl }}{{ p.url }}">{{ p.path }}</a></li>
-        {% endfor %}
-    </ul>
+    <script>
+    function createForce() {
+        var self = this;
+        self.addNode = function(version, id, name, size) {
+            allNodes.push({
+                version: version,
+                id: id,
+                name: name,
+                size: size,
+                focus: true,
+                visible: true,
+            });
+            return self;
+        };
+
+        self.removeNode = function(version, id) {
+            var i = 0;
+            var n = findNode(version, id);
+            while (i < allLinks.length) {
+                if ((allLinks[i]['source'] == n) || (allLinks[i]['target'] == n)) {
+                    allLinks.splice(i, 1);
+                } else i++;
+            }
+            allNodes.splice(findNodeIndex(version, id), 1);
+            return self;
+        };
+
+        self.addLink = function(version, source, target, strength) {
+            allLinks.push({
+                version: version,
+                "source": findNode(version, source),
+                "target": findNode(version, target),
+                "value": strength,
+                focus: true,
+                visible: true
+            });
+            return self;
+        };
+
+        self.appendTo = function(parent) {
+            parent.appendChild(svg[0][0]);
+            return self;
+        }
+
+        self.version = function(v) {
+            if (typeof arguments[0] === 'undefined') {
+                return versionValue;
+            }
+            versionValue = v;
+            versionChanged = true;
+            return self;
+        }
+
+        self.linkMinimum = function(min) {
+            if (typeof arguments[0] === 'undefined') {
+                return linkMinimumValue;
+            }
+            linkMinimumValue = min;
+            return self;
+        }
+
+        var refreshVisible = function() {
+            // Visibility
+            for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                var l = allLinks[linkNum];
+                if (l.value < linkMinimumValue) {
+                    l.visible = false;
+                } else {
+                    l.visible = true;
+                }
+            }
+            for (var i = 0; i < allNodes.length; i++) {
+                var n = allNodes[i];
+                // No more links
+                if (!findNodeLinks(n).reduce(function(prev, curr) {
+                        return prev || curr.visible;
+                    }, false)) {
+                    n.visible = false;
+                } else {
+                    n.visible = true;
+                }
+            }
+
+            // Focus
+            if (!focused) {
+                for (var i = 0; i < allNodes.length; i++) {
+                    allNodes[i].focus = true;
+                }
+                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                    allLinks[linkNum].focus = true;
+                }
+            } else {
+                // Focus an element
+                for (var i = 0; i < allNodes.length; i++) {
+                    allNodes[i].focus = false;
+                }
+                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                    allLinks[linkNum].focus = false;
+                }
+                findNodeLinks(focusedNode, true).forEach(function(l) {
+                    if (l.visible) {
+                        l.focus = true;
+                        l.source.focus = true;
+                        l.target.focus = true;
+                    }
+                });
+            }
+        }
+
+        var findNode = function(version, id) {
+            for (var i = 0; i < allNodes.length; i++) {
+                if (allNodes[i].id === id && allNodes[i].version === version) {
+                    return allNodes[i];
+                }
+            };
+        };
+
+        var findNodeIndex = function(version, id) {
+            for (var i = 0; i < allNodes.length; i++) {
+                if (allNodes[i].id == id && allNodes[i].version === version) {
+                    return i;
+                }
+            };
+        };
+
+        var findLink = function(source, target) {
+            for (var i = 0; i < allLinks.length; i++) {
+                var link = allLinks[i];
+                if (link.source.id == source && link.target.id == target) {
+                    return link;
+                } else if (link.source.id == target && link.target.id == source) {
+                    return link;
+                }
+            }
+            return null;
+        }
+
+        var findNodeLinks = function(source, bothVersions) {
+            var retLinks = [];
+            if (bothVersions) {
+                for (var i = 0; i < allLinks.length; i++) {
+                    if (allLinks[i].source.id == source.id || allLinks[i].target.id == source.id) {
+                        retLinks.push(allLinks[i]);
+                    }
+                }
+            } else {
+                for (var i = 0; i < allLinks.length; i++) {
+                    if (allLinks[i].source == source || allLinks[i].target == source) {
+                        retLinks.push(allLinks[i]);
+                    }
+                }
+            }
+            return retLinks;
+        }
+
+        var nodeColor = d3.scale.category20();
+        var linkColor = d3.scale.category20c();
+        var unfocusedOpacity = 0.1;
+        var tooltipTextPadding = 10;
+
+        // set up the D3 visualisation in the specified element
+        var w = $('body').width(),
+            h = $('body').height();
+
+        var svg = d3.select(document.createElementNS("http://www.w3.org/2000/svg", "svg"))
+            .attr('id', 'svg')
+            .attr("width", w)
+            .attr("height", h);
+        var vis = svg
+            .append('svg:g');
+
+        var force = d3.layout.force();
+
+        var allLinks = [];
+        var allNodes = [];
+
+        var focused = false;
+        var focusedNode;
+        var versionChanged;
+        var versionValue;
+        var linkMinimumValue;
+
+        self.update = function() {
+            var nodes;
+            var links;
+            if (versionChanged) {
+                nodes = allNodes.filter(function(n) {
+                    return n.version === versionValue;
+                });
+                // TODO make more efficient
+                for (var i = 0; i < nodes.length; i++) {
+                    for (var j = 0; j < allNodes.length; j++) {
+                        if (allNodes[j].version == versionValue) {
+                            continue;
+                        }
+                        if (nodes[i].id === allNodes[j].id) {
+                            nodes[i].x = allNodes[j].x;
+                            nodes[i].y = allNodes[j].y;
+                        }
+                    }
+                }
+                links = allLinks.filter(function(l) {
+                    return l.version === versionValue;
+                });
+                force.nodes(nodes);
+                force.links(links);
+                versionChanged = false;
+            } else {
+                nodes = force.nodes();
+                links = force.links();
+            }
+
+            var linkSizes = allLinks.map(function(l) {
+                return l.value;
+            });
+            var smallestLink = d3.min(linkSizes);
+            var largestLink = d3.max(linkSizes);
+            var linkStrengthScale = d3.scale.linear()
+                .domain([0, largestLink])
+                .range([0, 1]);
+            var strokeScale = d3.scale.pow()
+                .exponent(3)
+                .domain([smallestLink, largestLink])
+                .range([1, 10]);
+            var linkDistanceScale = d3.scale.linear()
+                .domain([smallestLink, largestLink])
+                .range([300, 70]);
+            var nodeSizeScale = d3.scale.pow()
+                .exponent(2)
+                .domain([0, 1])
+                .range([0, 100]);
+            nodeColor.domain([0, 1]);
+            linkColor.domain([smallestLink, largestLink]);
+
+
+            refreshVisible();
+
+            var link = vis.selectAll("line")
+                .data(links, function(d) {
+                    return d.source.id + "-" + d.target.id;
+                });
+            link.enter().append("line")
+                .attr("id", function(d) {
+                    return d.source.id + "-" + d.target.id;
+                })
+                .classed("link", true)
+                .attr('stroke-width', 0);
+            link
+                .transition()
+                .attr('visibility', function(d) {
+                    return d.visible ? 'visible' : 'hidden';
+                })
+                .attr('stroke', function(d) {
+                    return linkColor(d.value);
+                })
+                .attr("stroke-width", function(d) {
+                    return d.visible ? strokeScale(d.value) : 0;
+                })
+                .attr('opacity', function(d) {
+                    return d.focus ? 1 : unfocusedOpacity;
+                });
+            link.exit()
+                .transition()
+                .attr('stroke-width', 0)
+                .remove();
+
+            var node = vis.selectAll("g.node")
+                .data(nodes, function(d) {
+                    return d.id;
+                });
+            var nodeEnter = node.enter()
+                .append("g")
+                .classed("node", true)
+                .classed('send-to-top', true)
+                .call(force.drag)
+                .on('dblclick', function(d) {
+                    focused = !focused;
+                    focusedNode = d;
+                    update();
+                })
+                .on('mouseenter', function(d) {
+                    if (!d.focus) {
+                        return;
+                    }
+                    var tooltip = svg.append("g")
+                        .classed('tooltip', true)
+                        .attr('opacity', 0);
+                    var text = tooltip.append('text')
+                        .attr('fill', 'rgba(255,255,0,1)');
+                    text.append('tspan')
+                        .attr('x', 0)
+                        .attr('dy', '1.2em')
+                        .text(d.name);
+                    text.append('tspan')
+                        .attr('x', 0)
+                        .attr('dy', '1.2em')
+                        .text('Win Rate: ' + (d.size * 100).toFixed(2) + '%');
+                    var textBBox = text.node().getBBox();
+                    tooltip.append('rect')
+                        .classed('tooltip-bg', true)
+                        .attr('x', textBBox.x - tooltipTextPadding)
+                        .attr('y', textBBox.y - tooltipTextPadding)
+                        .attr('width', textBBox.width + 2 * tooltipTextPadding)
+                        .attr('height', textBBox.height + 2 * tooltipTextPadding)
+                        .attr('rx', tooltipTextPadding / 2)
+                        .attr('ry', tooltipTextPadding / 2);
+                    $(tooltip.node()).children('text').detach().appendTo(tooltip.node());
+                    tooltip
+                        .transition()
+                        .attr('opacity', 1);
+                })
+                .on('mousemove', function(d) {
+                    if (!d.focus) {
+                        return;
+                    }
+                    var textBBox = svg.selectAll('g.tooltip text')
+                        .node().getBBox();
+                    svg.selectAll('g.tooltip')
+                        .attr("transform", "translate(" + (d.x + d3.mouse(this)[0] + tooltipTextPadding) + ', ' + (d.y + d3.mouse(this)[1] - tooltipTextPadding - textBBox.height) + ")");
+                })
+                .on('mouseleave', function(d) {
+                    if (!d.focus) {
+                        return;
+                    }
+                    svg.selectAll('g.tooltip')
+                        .transition()
+                        .attr('opacity', 0)
+                        .remove()
+                })
+                .append('g')
+                .classed('hover-scale', true);
+            node.exit()
+                .transition()
+                .remove();
+            nodeEnter.append("svg:circle")
+                .attr("id", function(d) {
+                    return "Node;" + d.id;
+                })
+                .attr('stroke', 'none')
+                .attr('r', 0);
+            node.select('circle')
+                .attr("fill", function(d) {
+                    return nodeColor(d.id);
+                })
+                .transition()
+                .attr('visiblility', function(d) {
+                    return d.visible ? 'visible' : 'hidden';
+                })
+                .attr("r", function(d) {
+                    return d.visible ? nodeSizeScale(d.size) : 0;
+                })
+                .attr('opacity', function(d) {
+                    return d.focus ? 1 : unfocusedOpacity;
+                });
+            node.exit().select('circle')
+                .transition()
+                .attr('r', 0);
+            nodeEnter.append('defs')
+                .append('clipPath')
+                .attr('id', function(d, i) {
+                    return 'circle' + i;
+                })
+                .append('circle')
+                .attr('r', 0);
+            node.select('defs>clipPath>circle')
+                .transition()
+                .attr("r", function(d) {
+                    return d.visible ? nodeSizeScale(d.size) / 1.2 : 0;
+                });
+            node.exit().select('defs>clipPath>circle')
+                .transition()
+                .attr('r', 0);
+            nodeEnter.append('image')
+                .attr('clip-path', function(d, i) {
+                    return 'url(#circle' + i + ')';
+                })
+                .attr('xlink:href', function(d) {
+                    // return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
+                });
+            node.select('image')
+                .transition()
+                .attr('width', function(d) {
+                    return d.visible ? 2 * nodeSizeScale(d.size) / 1.2 : 0;
+                })
+                .attr('height', function(d) {
+                    return d.visible ? 2 * nodeSizeScale(d.size) / 1.2 : 0;
+                })
+                .attr('x', function() {
+                    return -d3.select(this).attr('width') / 2;
+                })
+                .attr('y', function() {
+                    return -d3.select(this).attr('height') / 2;
+                }).attr('opacity', function(d) {
+                    return d.focus ? 1 : unfocusedOpacity;
+                });;
+            node.exit().select('image')
+                .transition()
+                .attr('width', 0)
+                .attr('height', 0)
+                .attr('x', 0)
+                .attr('y', 0);
+
+            // because of the way the network is created, nodes are created first, and links second,
+            // so the lines were on top of the nodes, this just reorders the DOM to put the svg:g on top
+            $(".send-to-top").each(function(index) {
+                this.parentNode.appendChild(this);
+            });
+            // Send tooltips to very top
+            $('.tooltip').each(function(index) {
+                this.parentNode.appendChild(this);
+            });
+
+            force.on("tick", function() {
+                node.attr("transform", function(d) {
+                    return "translate(" + d.x + "," + d.y + ")";
+                });
+
+                link.attr("x1", function(d) {
+                        return d.source.x;
+                    })
+                    .attr("y1", function(d) {
+                        return d.source.y;
+                    })
+                    .attr("x2", function(d) {
+                        return d.target.x;
+                    })
+                    .attr("y2", function(d) {
+                        return d.target.y;
+                    });
+            });
+
+            // Restart the force layout.
+            force
+                .gravity(0.5)
+                // Invisible nodes do not interact
+                .charge(function(d) {
+                    return d.visible ? -10000 : 0;
+                })
+                .friction(0.1)
+                .linkDistance(function(d) {
+                    return d.source.size + d.target.size + linkDistanceScale(findLink(d.source.id, d.target.id).value);
+                })
+                // Invisible nodes do not interact
+                .linkStrength(function(d) {
+                    return d.visible ? d.focus ? linkStrengthScale(d.value) : linkStrengthScale(d.value) / 2 : 0;
+                })
+                // Set the size to current svg size
+                .size([+svg.style('width').replace('px', ''), +svg.style('height').replace('px', '')])
+                .start();
+            return self;
+        };
+
+        // Make it all go
+        return self.version('5.14')
+            .linkMinimum(0.3);
+    }
+
+    var theSvg = $('body').append($('<svg>')
+        .attr('id', 'theSvg'));
+
+
+    // Title
+    d3.select($('#theSvg')[0]).append('div')
+        .attr('id', 'title')
+        .style('pointer-events', 'none')
+        .style('position', 'absolute')
+        .style('top', '50%')
+        .style('left', '20px')
+        .style('font-family', 'sans-serif')
+        .style('font-size', 'larger')
+        .style('text-align', 'center')
+        .append('div')
+        .classed('trans-bg', true)
+        .style('transform-origin', 'left')
+        .style('transform', 'rotate(-90deg) translateX(-50%) translateY(50%)')
+        .text('Arsenal')
+        .append('div')
+        .style('dy', '1.2em')
+        .text('Item win rate and co-occurance visualizer');
+
+    // Info text
+    var infoText = d3.select($('#theSvg')[0]).append('div')
+        .attr('id', 'info')
+        .classed('trans-bg', true)
+        .style('pointer-events', 'none')
+        .style('position', 'absolute')
+        .style('width', '30%')
+        .style('bottom', '20px')
+        .style('left', '20px')
+        .html('The size of an item represents its win rate.<br>The lines represent the frequency of items being found together.<br>Double click to focus on an item.');
+
+    // Legal stuff
+    var legalText = d3.select($('#theSvg')[0]).append('div')
+        .attr('id', 'legal-info')
+        .style('pointer-events', 'none')
+        .style('position', 'absolute')
+        .style('width', '38%')
+        .style('bottom', '20px')
+        .style('right', '20px')
+        .style('font-size', 'smaller')
+        .style('text-align', 'right')
+        .html('This application isn\'t endorsed by Riot Games and doesn\'t reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends &copy; Riot Games, Inc.');
+
+
+    // The graph
+    var graph = createForce()
+        .appendTo($('#theSvg')[0])
+        .update();
+    $(function() {
+        $(window).resize(function() {
+            graph.update();
+        });
+    });
+
+    // Link minimum slider
+    var linkMinSlider = d3.select($('#theSvg')[0]).append('div')
+        .style('position', 'absolute')
+        .style('width', '70%')
+        .style('top', '20px')
+        .style('left', '20px')
+    linkMinSlider.append('div')
+        .style('pointer-events', 'none')
+        .style('position', 'absolute')
+        .style('top', '50px')
+        .text('Minimum co-occurance rate')
+    var linkMinDisplay = d3.scale.linear().domain([0, 1]).range([0, 1]);
+    linkMinSlider.append('div')
+        .call(d3.slider()
+            .scale(linkMinDisplay)
+            .axis(true)
+            .snap(true)
+            .value(graph.linkMinimum())
+            .on('slide', function(evt, value) {
+                graph
+                    .linkMinimum(value)
+                    .update();
+            })
+        );
+
+    // Version slider
+    var versionSlider = d3.select($('#theSvg')[0]).append('div')
+        .style('position', 'absolute')
+        .style('width', '20%')
+        .style('top', '20px')
+        .style('right', '20px');
+    versionSlider.append('div')
+        .style('pointer-events', 'none')
+        .style('position', 'absolute')
+        .style('top', '50px')
+        .style('right', '20px')
+        .text('Game Version')
+    versionSlider.append('div')
+        .call(d3.slider()
+            .scale(d3.scale.ordinal()
+                .domain([5.11, 5.14])
+                .rangePoints([0, 1], 0.5))
+            .axis(d3.svg.axis())
+            .value(graph.version())
+            .on('slide', function(evt, value) {
+                graph.version('' + value)
+                    .update();
+            })
+        );
+
+    // Load data
+    $.getJSON('{{site.baseurl}}/data/itemCross.json').then(function(data) {
+        for (var i = 0; i < data.nodes.length; i++) {
+            var node = data.nodes[i];
+            graph.addNode(node.version, node.id, node.name, node.winRate);
+        };
+        for (var i = 0; i < data.links.length; i++) {
+            var link = data.links[i];
+            graph.addLink(link.version, link.source, link.target, link.value);
+        };
+        graph.version('5.14')
+            .update();
+    });
+    </script>
 </body>
 
 </html>
