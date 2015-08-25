@@ -22,6 +22,8 @@ try:
 			WHERE itemStat.version = ?
 			''', (version,))
 		def nodesToDict(node):
+			if node[1] == 3250:
+				print('probs!')
 			return {
 				'version' : node[0],
 				'id' : node[1],
