@@ -168,7 +168,8 @@
             return retLinks;
         }
 
-        var color = d3.scale.category10();
+        var nodeColor = d3.scale.category20();
+        var linkColor = d3.scale.category20c();
         var unfocusedOpacity = 0.3
         var tooltipTextPadding = 10;
 
@@ -243,6 +244,9 @@
                 .exponent(2)
                 .domain([0, 1])
                 .range([0, 100]);
+            nodeColor.domain([0, 1]);
+            linkColor.domain([smallestLink, largestLink]);
+
 
             refreshVisible();
 
@@ -260,6 +264,9 @@
                 .transition()
                 .attr('visibility', function(d) {
                     return d.visible ? 'visible' : 'hidden';
+                })
+                .attr('stroke', function(d) {
+                    return linkColor(d.value);
                 })
                 .attr("stroke-width", function(d) {
                     return d.visible ? strokeScale(d.value) : 0;
@@ -339,7 +346,7 @@
                 .attr('r', 0);
             node.select('circle')
                 .attr("fill", function(d) {
-                    return color(d.id);
+                    return nodeColor(d.id);
                 })
                 .transition()
                 .attr('visiblility', function(d) {
