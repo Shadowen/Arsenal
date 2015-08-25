@@ -172,6 +172,7 @@
         var linkColor = d3.scale.category20c();
         var unfocusedOpacity = 0.1;
         var tooltipTextPadding = 10;
+        var transitionSpeed = 500;
 
         // set up the D3 visualisation in the specified element
         var w = $('body').width(),
@@ -243,10 +244,9 @@
             var nodeSizeScale = d3.scale.pow()
                 .exponent(2)
                 .domain([0, 1])
-                .range([0, 100]);
-            nodeColor.domain([0, 1]);
+                .range([10, 100]);
+            nodeColor.domain([0, 9999]);
             linkColor.domain([smallestLink, largestLink]);
-
 
             refreshVisible();
 
@@ -262,6 +262,7 @@
                 .attr('stroke-width', 0);
             link
                 .transition()
+                .duration(transitionSpeed)
                 .attr('visibility', function(d) {
                     return d.visible ? 'visible' : 'hidden';
                 })
@@ -276,6 +277,7 @@
                 });
             link.exit()
                 .transition()
+                .duration(transitionSpeed)
                 .attr('stroke-width', 0)
                 .remove();
 
@@ -328,8 +330,12 @@
                     if (!d.focus) {
                         return;
                     }
-                    var textBBox = svg.selectAll('g.tooltip text')
-                        .node().getBBox();
+                    var node = svg.selectAll('g.tooltip text')
+                        .node();
+                    if (typeof node === 'undefined') {
+                        return;
+                    }
+                    var textBBox = node.getBBox();
                     svg.selectAll('g.tooltip')
                         .attr("transform", "translate(" + (d.x + d3.mouse(this)[0] + tooltipTextPadding) + ', ' + (d.y + d3.mouse(this)[1] - tooltipTextPadding - textBBox.height) + ")");
                 })
@@ -358,6 +364,7 @@
                     return nodeColor(d.id);
                 })
                 .transition()
+                .duration(transitionSpeed)
                 .attr('visiblility', function(d) {
                     return d.visible ? 'visible' : 'hidden';
                 })
@@ -369,6 +376,7 @@
                 });
             node.exit().select('circle')
                 .transition()
+                .duration(transitionSpeed)
                 .attr('r', 0);
             nodeEnter.append('defs')
                 .append('clipPath')
@@ -379,11 +387,13 @@
                 .attr('r', 0);
             node.select('defs>clipPath>circle')
                 .transition()
+                .duration(transitionSpeed)
                 .attr("r", function(d) {
                     return d.visible ? nodeSizeScale(d.size) / 1.2 : 0;
                 });
             node.exit().select('defs>clipPath>circle')
                 .transition()
+                .duration(transitionSpeed)
                 .attr('r', 0);
             nodeEnter.append('image')
                 .attr('clip-path', function(d, i) {
@@ -394,6 +404,7 @@
                 });
             node.select('image')
                 .transition()
+                .duration(transitionSpeed)
                 .attr('width', function(d) {
                     return d.visible ? 2 * nodeSizeScale(d.size) / 1.2 : 0;
                 })
@@ -410,6 +421,7 @@
                 });;
             node.exit().select('image')
                 .transition()
+                .duration(transitionSpeed)
                 .attr('width', 0)
                 .attr('height', 0)
                 .attr('x', 0)
@@ -449,7 +461,7 @@
                 .gravity(0.5)
                 // Invisible nodes do not interact
                 .charge(function(d) {
-                    return d.visible ? -10000 : 0;
+                    return d.visible ? -20000 : 0;
                 })
                 .friction(0.1)
                 .linkDistance(function(d) {
@@ -460,7 +472,7 @@
                     return d.visible ? d.focus ? linkStrengthScale(d.value) : linkStrengthScale(d.value) / 2 : 0;
                 })
                 // Set the size to current svg size
-                .size([+svg.style('width').replace('px', ''), +svg.style('height').replace('px', '')])
+                .size([$('body').width(), $('body').height()])
                 .start();
             return self;
         };
@@ -472,7 +484,6 @@
 
     var theSvg = $('body').append($('<svg>')
         .attr('id', 'theSvg'));
-
 
     // Title
     d3.select($('#theSvg')[0]).append('div')
@@ -523,6 +534,9 @@
         .update();
     $(function() {
         $(window).resize(function() {
+            $('#theSvg,#svg')
+                .attr('width', $('body').width())
+                .attr('height', $('body').height());
             graph.update();
         });
     });
@@ -536,7 +550,7 @@
     linkMinSlider.append('div')
         .style('pointer-events', 'none')
         .style('position', 'absolute')
-        .style('top', '50px')
+        .style('top', '40px')
         .text('Minimum co-occurance rate')
     var linkMinDisplay = d3.scale.linear().domain([0, 1]).range([0, 1]);
     linkMinSlider.append('div')
@@ -561,9 +575,9 @@
     versionSlider.append('div')
         .style('pointer-events', 'none')
         .style('position', 'absolute')
-        .style('top', '50px')
+        .style('top', '40px')
         .style('right', '20px')
-        .text('Game Version')
+        .text('Game Version');
     versionSlider.append('div')
         .call(d3.slider()
             .scale(d3.scale.ordinal()
@@ -581,10 +595,18 @@
     $.getJSON('{{site.baseurl}}/data/itemCross.json').then(function(data) {
         for (var i = 0; i < data.nodes.length; i++) {
             var node = data.nodes[i];
+            if (!node.version || !node.id || !node.name || typeof node.winRate === 'undefined') {
+                console.error('Node', node, 'has a problem!');
+                continue;
+            }
             graph.addNode(node.version, node.id, node.name, node.winRate);
         };
         for (var i = 0; i < data.links.length; i++) {
             var link = data.links[i];
+            if (!link.version || !link.source || !link.target || !link.value) {
+                console.error('Link', link, 'has a problem!');
+                continue;
+            }
             graph.addLink(link.version, link.source, link.target, link.value);
         };
         graph.version('5.14')
