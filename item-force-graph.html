@@ -14,10 +14,6 @@
 
 <body>
     <script>
-    // set up the D3 visualisation in the specified element
-    var w = $('body').width(),
-        h = $('body').height();
-
     function createForce() {
         var self = this;
         self.addNode = function(version, id, name, size) {
@@ -176,10 +172,14 @@
         var unfocusedOpacity = 0.3
         var tooltipTextPadding = 10;
 
+        // set up the D3 visualisation in the specified element
+        var w = $('body').width(),
+            h = $('body').height();
+
         var svg = d3.select(document.createElementNS("http://www.w3.org/2000/svg", "svg"))
             .attr('id', 'svg')
-            .attr("width", '100%')
-            .attr("height", '100%');
+            .attr("width", w)
+            .attr("height", h);
         var vis = svg
             .append('svg:g');
 
@@ -450,7 +450,7 @@
 
     // The graph
     var graph = createForce()
-        .appendTo(theSvg[0])
+        .appendTo($('#theSvg')[0])
         .update();
     $(function() {
         $(window).resize(function() {
@@ -459,11 +459,16 @@
     });
 
     // Link minimum slider
-    d3.select(theSvg[0]).append('div')
+    var linkMinSlider = d3.select($('#theSvg')[0]).append('div')
         .style('position', 'absolute')
         .style('width', '70%')
         .style('top', '20px')
         .style('left', '20px')
+    linkMinSlider.append('div')
+        .style('position', 'absolute')
+        .style('top', '50px')
+        .text('Link minimum')
+    linkMinSlider
         .call(d3.slider()
             .scale(d3.scale.linear().domain([0, 1]))
             .axis(d3.svg.axis())
@@ -477,12 +482,17 @@
         );
 
     // Version slider
-    d3.select(theSvg[0]).append('div')
+    var versionSlider = d3.select($('#theSvg')[0]).append('div')
         .style('position', 'absolute')
         .style('width', '20%')
         .style('top', '20px')
+        .style('right', '20px');
+    versionSlider.append('div')
+        .style('position', 'absolute')
+        .style('top', '50px')
         .style('right', '20px')
-        .append('div')
+        .text('Version')
+    versionSlider
         .call(d3.slider()
             .scale(d3.scale.ordinal()
                 .domain([5.11, 5.14])
