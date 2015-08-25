@@ -291,8 +291,15 @@
                         .classed('tooltip', true)
                         .attr('opacity', 0);
                     var text = tooltip.append('text')
-                        .attr('fill', 'rgba(255,255,0,1)')
+                        .attr('fill', 'rgba(255,255,0,1)');
+                    text.append('tspan')
+                        .attr('x', 0)
+                        .attr('dy', '1.2em')
                         .text(d.name);
+                    text.append('tspan')
+                        .attr('x', 0)
+                        .attr('dy', '1.2em')
+                        .text('Win Rate: ' + (d.size * 100).toFixed(2) + '%');
                     var textBBox = text.node().getBBox();
                     tooltip.append('rect')
                         .classed('tooltip-bg', true)
@@ -308,8 +315,10 @@
                         .attr('opacity', 1);
                 })
                 .on('mousemove', function(d) {
+                    var textBBox = svg.selectAll('g.tooltip text')
+                        .node().getBBox();
                     svg.selectAll('g.tooltip')
-                        .attr("transform", "translate(" + (d.x + d3.mouse(this)[0] + tooltipTextPadding) + ', ' + (d.y + d3.mouse(this)[1] - tooltipTextPadding) + ")");
+                        .attr("transform", "translate(" + (d.x + d3.mouse(this)[0] + tooltipTextPadding) + ', ' + (d.y + d3.mouse(this)[1] - tooltipTextPadding - textBBox.height) + ")");
                 })
                 .on('mouseleave', function(d) {
                     svg.selectAll('g.tooltip')
@@ -421,10 +430,10 @@
 
             // Restart the force layout.
             force
-                .gravity(1)
+                .gravity(0.5)
                 // Invisible nodes do not interact
                 .charge(function(d) {
-                    return d.visible ? -30000 : 0;
+                    return d.visible ? -10000 : 0;
                 })
                 .friction(0.1)
                 .linkDistance(function(d) {
@@ -432,7 +441,7 @@
                 })
                 // Invisible nodes do not interact
                 .linkStrength(function(d) {
-                    return d.visible ? d.focus ? linkStrengthScale(d.value) : 0 : 0;
+                    return d.visible ? linkStrengthScale(d.value) : 0;
                 })
                 // Set the size to current svg size
                 .size([+svg.style('width').replace('px', ''), +svg.style('height').replace('px', '')])
@@ -447,6 +456,47 @@
 
     var theSvg = $('body').append($('<svg>')
         .attr('id', 'theSvg'));
+
+
+    // Title
+    d3.select($('#theSvg')[0]).append('div')
+        .attr('id', 'title')
+        .style('pointer-events', 'none')
+        .style('position', 'absolute')
+        .style('top', '50%')
+        .style('left', '20px')
+        .style('font-family', 'sans-serif')
+        .style('font-size', 'larger')
+        .append('div')
+        .classed('trans-bg', true)
+        .style('transform-origin', 'left')
+        .style('transform', 'rotate(-90deg) translateX(-50%) translateY(50%)')
+        .text('Item co-occurance visualizer');
+
+    // Info text
+    var infoText = d3.select($('#theSvg')[0]).append('div')
+        .attr('id', 'info')
+        .classed('trans-bg', true)
+        .style('pointer-events', 'none')
+        .style('position', 'absolute')
+        .style('width', '30%')
+        .style('bottom', '20px')
+        .style('left', '20px')
+        .html('The size of an item represents its win rate.<br>The lines represent the frequency of items being found together.<br>Double click to focus on an item.');
+
+    // Legal stuff
+    var legalText = d3.select($('#theSvg')[0]).append('div')
+        .attr('id', 'legal-info')
+        .classed('trans-bg', true)
+        .style('pointer-events', 'none')
+        .style('position', 'absolute')
+        .style('width', '50%')
+        .style('bottom', '20px')
+        .style('right', '20px')
+        .style('font-size', 'smaller')
+        .style('text-align', 'right')
+        .html('This application isn\'t endorsed by Riot Games and doesn\'t reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends &copy; Riot Games, Inc.');
+
 
     // The graph
     var graph = createForce()
@@ -465,10 +515,12 @@
         .style('top', '20px')
         .style('left', '20px')
     linkMinSlider.append('div')
+        .classed('trans-bg', true)
+        .style('pointer-events', 'none')
         .style('position', 'absolute')
         .style('top', '50px')
-        .text('Link minimum')
-    linkMinSlider
+        .text('Minimum co-occurance rate')
+    linkMinSlider.append('div')
         .call(d3.slider()
             .scale(d3.scale.linear().domain([0, 1]))
             .axis(d3.svg.axis())
@@ -488,11 +540,13 @@
         .style('top', '20px')
         .style('right', '20px');
     versionSlider.append('div')
+        .classed('trans-bg', true)
+        .style('pointer-events', 'none')
         .style('position', 'absolute')
         .style('top', '50px')
         .style('right', '20px')
-        .text('Version')
-    versionSlider
+        .text('Game Version')
+    versionSlider.append('div')
         .call(d3.slider()
             .scale(d3.scale.ordinal()
                 .domain([5.11, 5.14])

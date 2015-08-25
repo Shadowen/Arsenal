@@ -5,6 +5,12 @@ body {
     height: 100%;
     width: 100%;
     overflow: hidden;
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.trans-bg {
+    padding: 10px;
+    background-color: rgba(255, 255, 255, 0.8);
 }
 
 .hover-scale {
