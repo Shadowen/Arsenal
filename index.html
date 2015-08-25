@@ -406,7 +406,7 @@
                     return 'url(#circle' + i + ')';
                 })
                 .attr('xlink:href', function(d) {
-                    // return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
+                    return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
                 });
             node.select('image')
                 .transition()
