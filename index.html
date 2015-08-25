@@ -336,8 +336,10 @@
                         return;
                     }
                     var textBBox = node.getBBox();
+                    var x = Math.min(d.x + d3.mouse(this)[0] + tooltipTextPadding, w - textBBox.width);
+                    var y = Math.max(d.y + d3.mouse(this)[1] - tooltipTextPadding - textBBox.height, 0);
                     svg.selectAll('g.tooltip')
-                        .attr("transform", "translate(" + (d.x + d3.mouse(this)[0] + tooltipTextPadding) + ', ' + (d.y + d3.mouse(this)[1] - tooltipTextPadding - textBBox.height) + ")");
+                        .attr("transform", "translate(" + x + ', ' + y + ")");
                 })
                 .on('mouseleave', function(d) {
                     if (!d.focus) {
@@ -350,6 +352,10 @@
                 })
                 .append('g')
                 .classed('hover-scale', true);
+            node
+                .attr('pointer-events', function(d) {
+                    return d.focus ? 'all' : 'none';
+                })
             node.exit()
                 .transition()
                 .remove();
