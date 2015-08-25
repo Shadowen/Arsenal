@@ -13,7 +13,7 @@ from collections import defaultdict
 conn = sqlite3.connect('database.db')
 c = conn.cursor()
 try:
-	data = {"5.11":{}, "5.14":{}}
+	data = {'nodes' : [], 'links' : []}
 	# Nodes
 	def exportNodes(version):
 		c.execute('''SELECT itemStat.version, itemStat.id, item.name, itemStat.winRate
@@ -28,7 +28,7 @@ try:
 				'name' : node[2],
 				'winRate': node[3]
 			}
-		data[version]['nodes'] = list(map(nodesToDict, c.fetchall()))
+		data['nodes'] += list(map(nodesToDict, c.fetchall()))
 	# Links
 	def exportLinks(version):
 		c.execute('''SELECT [match].version,
@@ -41,13 +41,13 @@ try:
 	  FROM (
 	           SELECT i1.matchId,
 	                  i1.participantId,
-	                  i1.itemId AS item1,
-	                  i2.itemId AS item2
+	                  i1.shortItemId AS item1,
+	                  i2.shortItemId AS item2
 	             FROM participantItem AS i1
 	                  CROSS JOIN
 	                  participantItem AS i2 ON i1.matchId = i2.matchId AND 
 	                                           i1.participantId = i2.participantId AND 
-	                                           i1.itemId < i2.itemId
+	                                           i1.shortItemId < i2.shortItemId
 	       )
 	       LEFT JOIN
 	       [match] ON matchId = [match].id
@@ -69,7 +69,7 @@ try:
 				'target' : link[2],
 				'value' : link[3]
 			}
-		data[version]['links'] = list(map(linksToDict, c.fetchall()))
+		data['links'] += list(map(linksToDict, c.fetchall()))
 	exportNodes('5.11')
 	exportNodes('5.14')
 	exportLinks('5.11')

@@ -190,10 +190,49 @@ try:
 			print(list(zip(*items))[0])
 			raise "Error"
 
+		def shortenItems(itemId):
+			mapping = {
+			# Seraph -> Archangel
+			3040 : 3003, 3048 : 3003, 3007 : 3003,
+			# Muramana -> Manamune
+			3043 : 3004, 3042 : 3004, 3008 : 3004,
+			# Swiftness
+			1306 : 3009, 1308 : 3009, 1035 : 3009, 1307 : 3009, 1309 : 3009, 1336 : 3009,
+			# Mobi
+			1326 : 3117, 1328 : 3117, 1325 : 3117, 1327 : 3117, 1329 : 3117, 1340 : 3117,
+			# Lucidity
+			1331 : 3158, 1333 : 3158, 1330 : 3158, 1332 : 3158, 1334 : 3158, 1341 : 3158,
+			# Mercury Treads
+			1321 : 3111, 1323 : 3111, 1320 : 3111, 1322 : 3111, 1324 : 3111, 1339 : 3111,
+			# Bezerker's
+			1301 : 3006, 1303 : 3006, 1300 : 3006, 1302 : 3006, 1304 : 3006, 1335 : 3006,
+			# Ninja Tabi
+			1316 : 3047, 1318 : 3047, 1315 : 3047, 1317 : 3047, 1319 : 3047, 1338 : 3047,
+			# Sorcs
+			1311 : 3020, 1313 : 3020, 1310 : 3020, 1312 : 3020, 1314 : 3020, 1337 : 3020,
+			# Stalker's Blade
+			3707 : 3706, 3708 : 3706, 3709 : 3706, 3710 : 3706,
+			# Poacher's Knife
+			3719 : 3711, 3720 : 3711, 3721 : 3711, 3722 : 3711,
+			# Skirmisher's Sabre
+			3714 : 3715, 3716 : 3715, 3717 : 3715, 3718 : 3715,
+			# Ranger's Trailblazer
+			3723 : 3713, 3724 : 3713, 3725 : 3713, 3726 : 3713,
+			# Warding Totem
+			3361 : 3340, 3362 : 3340,
+			# Sweeping Lens
+			3364 : 3341,
+			# Scrying Orb
+			3363 : 3342
+			}
+			if itemId in mapping:
+				return mapping[itemId]
+			return itemId
+
 		for (itemId, timeBought, goldThreshold) in items:
-			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, timeBought, goldThreshold)
-				VALUES (?, ?, ?, ?, ?)''',
-				(matchId, participantId, itemId, timeBought, goldThreshold))
+			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, shortItemId, timeBought, goldThreshold)
+				VALUES (?, ?, ?, ?, ?, ?)''',
+				(matchId, participantId, itemId, shortenItems(itemId), timeBought, goldThreshold))
 	print('Final items determined')
 	# Resolve stacks
 	# RoA

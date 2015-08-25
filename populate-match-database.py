@@ -118,7 +118,7 @@ for matchSet in files:
                         if itemId == None or itemId == 0:
                             itemId = eventDefault['itemAfter']
                         c.execute('''INSERT INTO event (matchId, frameTimestamp, timestamp, type, itemId, participantId, creatorId, killerId, victimId,
-                            positionX, positionY) VALUES (?, ?, ?, ?, coalesce(?, ?, ?), ?, ?, ?, ?, ?, ?)''',
+                            positionX, positionY) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
                             (matchId, frame['timestamp'], event['timestamp'], event['eventType'], itemId, eventDefault['participantId'], eventDefault['creatorId'], eventDefault['killerId'],
                             eventDefault['victimId'], event.get('position', {'x' : None})['x'], event.get('position', {'y' : None})['y']))
                         for assist in event.get('assistingParticipantIds', []):

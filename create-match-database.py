@@ -66,6 +66,7 @@ try:
     		matchId INTEGER,
     		participantId INTEGER,
     		itemId INTEGER,
+    		shortItemId INTEGER,
     		timeBought INTEGER,
     		finalStacks INTEGER,
     		maxStacks INTEGER,
