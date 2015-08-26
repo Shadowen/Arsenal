@@ -1,6 +1,9 @@
 myApp.controller('ForceController', function($scope, $routeParams) {
+    // Create a custom force directed graph
     function createForce() {
         var self = this;
+        // Add a node with the specified properties.
+        // Visible and focused by default
         self.addNode = function(version, id, name, size) {
             allNodes.push({
                 version: version,
@@ -10,9 +13,12 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                 focus: true,
                 visible: true,
             });
+            // Make sure to do a full update
+            versionChanged = true;
+            linkMinimumChanged = true;
             return self;
         };
-
+        // Remove the specified node
         self.removeNode = function(version, id) {
             var i = 0;
             var n = findNode(version, id);
@@ -22,9 +28,12 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                 } else i++;
             }
             allNodes.splice(findNodeIndex(version, id), 1);
+            // Make sure to do a full update later
+            versionChanged = true;
+            linkMinimumChanged = true;
             return self;
         };
-
+        // Add a link between two nodes by id. Only works within a version
         self.addLink = function(version, source, target, strength) {
             allLinks.push({
                 version: version,
@@ -34,14 +43,17 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                 focus: true,
                 visible: true
             });
+            // Make sure to do a full update
+            versionChanged = true;
+            linkMinimumChanged = true;
             return self;
         };
-
+        // Appends the root svg element of the force-directed graph to the specified parent
         self.appendTo = function(parent) {
             parent.appendChild(svg[0][0]);
             return self;
-        }
-
+        };
+        // Get or set the version of the graph
         self.version = function(v) {
             if (typeof arguments[0] === 'undefined') {
                 return versionValue;
@@ -49,64 +61,18 @@ myApp.controller('ForceController', function($scope, $routeParams) {
             versionValue = v;
             versionChanged = true;
             return self;
-        }
-
+        };
+        // Gets or sets the minimum strength of link displayed
         self.linkMinimum = function(min) {
             if (typeof arguments[0] === 'undefined') {
                 return linkMinimumValue;
             }
             linkMinimumValue = min;
+            linkMinimumChanged = true;
             return self;
         }
 
-        var refreshVisible = function() {
-            // Visibility
-            for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
-                var l = allLinks[linkNum];
-                if (l.value < linkMinimumValue) {
-                    l.visible = false;
-                } else {
-                    l.visible = true;
-                }
-            }
-            for (var i = 0; i < allNodes.length; i++) {
-                var n = allNodes[i];
-                // No more links
-                if (!findNodeLinks(n).reduce(function(prev, curr) {
-                        return prev || curr.visible;
-                    }, false)) {
-                    n.visible = false;
-                } else {
-                    n.visible = true;
-                }
-            }
-
-            // Focus
-            if (!focused) {
-                for (var i = 0; i < allNodes.length; i++) {
-                    allNodes[i].focus = true;
-                }
-                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
-                    allLinks[linkNum].focus = true;
-                }
-            } else {
-                // Focus an element
-                for (var i = 0; i < allNodes.length; i++) {
-                    allNodes[i].focus = false;
-                }
-                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
-                    allLinks[linkNum].focus = false;
-                }
-                findNodeLinks(focusedNode, true).forEach(function(l) {
-                    if (l.visible) {
-                        l.focus = true;
-                        l.source.focus = true;
-                        l.target.focus = true;
-                    }
-                });
-            }
-        }
-
+        // -- Private functions
         var findNode = function(version, id) {
             for (var i = 0; i < allNodes.length; i++) {
                 if (allNodes[i].id === id && allNodes[i].version === version) {
@@ -179,12 +145,15 @@ myApp.controller('ForceController', function($scope, $routeParams) {
         var focused = false;
         var focusedNode;
         var versionChanged;
+        var linkMinimumChanged;
         var versionValue;
         var linkMinimumValue;
 
         self.update = function() {
+            // The nodes and links on the graph at the moment.
             var nodes;
             var links;
+            // Update nodes and links if the version has changed
             if (versionChanged) {
                 nodes = allNodes.filter(function(n) {
                     return n.version === versionValue;
@@ -212,6 +181,7 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                 links = force.links();
             }
 
+            // Scales that we will use to draw the graph
             var linkSizes = allLinks.map(function(l) {
                 return l.value;
             });
@@ -233,8 +203,56 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                 .range([10, 100]);
             linkColor.domain([smallestLink, largestLink]);
 
-            refreshVisible();
+                // Make links under the minimum linkage value
+            if (linkMinimumChanged) {
+                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                    var l = allLinks[linkNum];
+                    if (l.value < linkMinimumValue) {
+                        l.visible = false;
+                    } else {
+                        l.visible = true;
+                    }
+                }
+                // Make nodes that don't have any links invisible
+                for (var i = 0; i < allNodes.length; i++) {
+                    var n = allNodes[i];
+                    if (!findNodeLinks(n).reduce(function(prev, curr) {
+                            return prev || curr.visible;
+                        }, false)) {
+                        n.visible = false;
+                    } else {
+                        n.visible = true;
+                    }
+                }
+                linkMinimumChanged = false;
+            }
 
+            // Update focused nodes
+            if (!focused) {
+                for (var i = 0; i < allNodes.length; i++) {
+                    allNodes[i].focus = true;
+                }
+                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                    allLinks[linkNum].focus = true;
+                }
+            } else {
+                // Focus an element
+                for (var i = 0; i < allNodes.length; i++) {
+                    allNodes[i].focus = false;
+                }
+                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                    allLinks[linkNum].focus = false;
+                }
+                findNodeLinks(focusedNode, true).forEach(function(l) {
+                    if (l.visible) {
+                        l.focus = true;
+                        l.source.focus = true;
+                        l.target.focus = true;
+                    }
+                });
+            }
+
+            // Create links
             var link = vis.selectAll("line")
                 .data(links, function(d) {
                     return d.source.id + "-" + d.target.id;
@@ -265,7 +283,7 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                 .duration(transitionSpeed)
                 .attr('stroke-width', 0)
                 .remove();
-
+            // Create nodes
             var node = vis.selectAll("g.node")
                 .data(nodes, function(d) {
                     return d.id;
@@ -276,18 +294,13 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                 .classed('send-to-top', true)
                 .append('a')
                 .attr('xlink:href', function(d) {
-                    return '#/item/' + d.id;
+                    return '{{ site.baseurl }}/#/item/' + d.id;
                 })
                 .call(force.drag)
-                .on('dblclick', function(d) {
+                .on('mouseenter', function(d) {
                     focused = !focused;
                     focusedNode = d;
-                    update();
-                })
-                .on('mouseenter', function(d) {
-                    if (!d.focus) {
-                        return;
-                    }
+
                     var tooltip = svg.append("g")
                         .classed('tooltip', true)
                         .attr('opacity', 0);
@@ -314,6 +327,7 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                     tooltip
                         .transition()
                         .attr('opacity', 1);
+                    update();
                 })
                 .on('mousemove', function(d) {
                     if (!d.focus) {
@@ -331,13 +345,13 @@ myApp.controller('ForceController', function($scope, $routeParams) {
                         .attr("transform", "translate(" + x + ', ' + y + ")");
                 })
                 .on('mouseleave', function(d) {
-                    if (!d.focus) {
-                        return;
-                    }
+                    focused = false;
+
                     svg.selectAll('g.tooltip')
                         .transition()
                         .attr('opacity', 0)
                         .remove()
+                    update();
                 })
                 .append('g')
                 .classed('hover-scale', true);
@@ -483,8 +497,6 @@ myApp.controller('ForceController', function($scope, $routeParams) {
 
     var theSvg = $('#force-container').append($('<svg>')
         .attr('id', 'theSvg'));
-    d3.select('#theSvg')
-        .style("opacity", 0);
 
     // Title
     d3.select($('#theSvg')[0]).append('div')
@@ -595,50 +607,55 @@ myApp.controller('ForceController', function($scope, $routeParams) {
     //------------------------------------
     //----Splash screen
     //------------------------------------
-    var $bg = $('<div>')
-        .attr('id', 'bg')
-        .css('position', 'absolute')
-        .css('top', 0)
-        .css('bottom', 0)
-        .css('left', 0)
-        .css('right', 0)
-        .css('background-image', 'url(\'{{ site.baseurl }}/images/bg.png\')')
-        .css('background-size', 'cover')
-        .on('click', function() {
-            // Click to skip splash screen
-            transitionIn();
-        })
-        .appendTo("#force-container");
-    $(window)
-        .resize(function() {
-            if (($(this).width() / $(this).height()) < $bg.width() / $bg.height()) {
-                $bg
-                    .removeClass()
-                    .addClass('bgheight');
-            } else {
-                $bg
-                    .removeClass()
-                    .addClass('bgwidth');
-            }
-        })
-        .trigger("resize");
+    if (!$routeParams.nosplash) {
+        d3.select('#theSvg')
+            .style("opacity", 0);
 
-    var transitionIn = function() {
-        // Transition the splash screen out
-        d3.select("#bg").transition()
-            .duration(1000)
-            .style("opacity", 0)
-            .each("end", function() {
-                d3.select(this)
-                    .remove();
-            });
-        // Transition the graph in
-        d3.select('#theSvg').transition()
-            .delay(500)
-            .duration(1000)
-            .style("opacity", 1)
-    };
-    setTimeout(transitionIn, 2000);
+        var $bg = $('<div>')
+            .attr('id', 'bg')
+            .css('position', 'absolute')
+            .css('top', 0)
+            .css('bottom', 0)
+            .css('left', 0)
+            .css('right', 0)
+            .css('background-image', 'url(\'{{ site.baseurl }}/images/bg.png\')')
+            .css('background-size', 'cover')
+            .on('click', function() {
+                // Click to skip splash screen
+                transitionIn();
+            })
+            .appendTo("#force-container");
+        $(window)
+            .resize(function() {
+                if (($(this).width() / $(this).height()) < $bg.width() / $bg.height()) {
+                    $bg
+                        .removeClass()
+                        .addClass('bgheight');
+                } else {
+                    $bg
+                        .removeClass()
+                        .addClass('bgwidth');
+                }
+            })
+            .trigger("resize");
+
+        var transitionIn = function() {
+            // Transition the splash screen out
+            d3.select("#bg").transition()
+                .duration(1000)
+                .style("opacity", 0)
+                .each("end", function() {
+                    d3.select(this)
+                        .remove();
+                });
+            // Transition the graph in
+            d3.select('#theSvg').transition()
+                .delay(500)
+                .duration(1000)
+                .style("opacity", 1)
+        };
+        setTimeout(transitionIn, 2000);
+    }
 
     // Load data
     $.getJSON('{{site.baseurl}}/data/itemCross.json').then(function(data) {
