@@ -21,9 +21,6 @@ c = conn.cursor()
 with open('apikey.txt', 'r') as f:
     apiKey = f.read()
 
-# 1852538938 # Contains DCap
-# 1852559476 # Contains RoA
-# 1852563520 # Contains Mejais
 files = ['5.11/RANKED_SOLO/NA.json', '5.14/RANKED_SOLO/NA.json']
 for matchSet in files:
     fileName = 'dataset/' + matchSet
@@ -34,11 +31,11 @@ for matchSet in files:
     requestNum = 1
     for (matchNum, matchId) in enumerate(matchIds):
         ## TODO
-        if matchNum == 3:
+        if matchNum == 100:
             break
         try:
             while True:
-                time.sleep(1)
+                # time.sleep(1)
                 print("Loading match {}({})".format(matchId, requestNum))
                 requestNum += 1
                 r = http.request(
