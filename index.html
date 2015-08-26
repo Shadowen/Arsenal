@@ -169,7 +169,8 @@
             return retLinks;
         }
 
-        var nodeColor = d3.scale.category20();
+        var nodeColor = d3.scale.category20()
+            .domain([0, 9999]);;
         var linkColor = d3.scale.category20c();
         var unfocusedOpacity = 0.1;
         var tooltipTextPadding = 10;
@@ -246,7 +247,6 @@
                 .exponent(2)
                 .domain([0, 1])
                 .range([10, 100]);
-            nodeColor.domain([0, 9999]);
             linkColor.domain([smallestLink, largestLink]);
 
             refreshVisible();
