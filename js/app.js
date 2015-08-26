@@ -1,39 +1,41 @@
 ---
-<!--: -->
 ---
-<!DOCTYPE html>
-<html>
+var myApp = angular.module('myApp', ['ngRoute', 'myModule']);
+myApp.config(['$routeProvider',
+    function($routeProvider) {
+        $routeProvider
+            .when('/', {
+                templateUrl: '{{ site.baseurl }}/partials/force.html',
+                controller: 'ForceController',
+            })
+            .when('/item/:itemId', {
+                templateUrl: '{{ site.baseurl }}/partials/item-detail.html',
+                controller: 'ItemController',
+            })
+            .otherwise({
+                redirectTo: '/'
+            });
+    }
+]);
 
-<head>
-    <script src='/js/d3.min.js'></script>
-    <script>
-    d3.selection.prototype.union = function(that) {
-        if (that instanceof d3.selection) {
-            var newselection = d3.select(null); //ensure the correct prototype
-            newselection.splice(0, 1); //empty the selection      
-            [].push.apply(newselection, this); //push in this selection, without loosing the prototype 
-            [].push.apply(newselection, that); //push in that selection, without loosing the prototype
-            return newselection;
-        } else {
-            throw new Error("Can only union with another d3 selection");
-        }
-    };
-    </script>
-    <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
-    <link rel='stylesheet' type='text/css' href='/css/styles.css'>
-</head>
+// Service
+var images = {
+    1: "http://ddragon.leagueoflegends.com/cdn/img/champion/splash/Aatrox_0.jpg"
+}
 
-<body>
-    <script>
-    var title = 'Data set';
+myApp.controller('ItemController', function($scope, $routeParams) {
+    $scope.itemId = $routeParams.itemId;
+    $scope.splashUrl = images[$routeParams.itemId];
+
+    var title = 'Buy Time';
     var data = [{
-        title: "ABC",
+        title: "Top 10%",
         values: [32314, 100000]
     }, {
-        title: "B",
+        title: "Average",
         values: [112394, 50000]
     }, {
-        title: "C",
+        title: "Median",
         values: [2433, 12310]
     }];
 
@@ -45,13 +47,13 @@
         };
         var titleHeight = 60;
 
-        var centerOffset = 20 * d3.max(data.map(function(d) {
+        var centerOffset = 12 * d3.max(data.map(function(d) {
             return d.title.length;
         })) + 20;
         var barHeight = 40;
         var barSpacing = 10;
         // Below this size, the value text will render outside the box
-        var minimumBarSize = 20;
+        var minimumBarSize = 100;
 
         var width = 640 + 2 * margins.sides;
         var height = margins.top + titleHeight + data.length * barHeight - barSpacing + margins.bottom;
@@ -202,7 +204,4 @@
     }
     d3.select('body')
         .call(createHorizontalBarComparison);
-    </script>
-</body>
-
-</html>
+});
