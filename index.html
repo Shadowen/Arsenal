@@ -383,11 +383,12 @@
             node.exit().select('circle')
                 .transition()
                 .duration(transitionSpeed)
-                .attr('r', 0);
+                .attr('r', 0)
+                .remove();
             nodeEnter.append('defs')
                 .append('clipPath')
-                .attr('id', function(d, i) {
-                    return 'circle' + i;
+                .attr('id', function(d) {
+                    return 'circle' + d.version + ':' + d.id;
                 })
                 .append('circle')
                 .attr('r', 0);
@@ -400,10 +401,11 @@
             node.exit().select('defs>clipPath>circle')
                 .transition()
                 .duration(transitionSpeed)
-                .attr('r', 0);
+                .attr('r', 0)
+                .remove();
             nodeEnter.append('image')
                 .attr('clip-path', function(d, i) {
-                    return 'url(#circle' + i + ')';
+                    return 'url(#circle' + d.version + ':' + d.id + ')';
                 })
                 .attr('xlink:href', function(d) {
                     return 'http://ddragon.leagueoflegends.com/cdn/' + d.version + '.1/img/item/' + d.id + '.png'
@@ -431,7 +433,8 @@
                 .attr('width', 0)
                 .attr('height', 0)
                 .attr('x', 0)
-                .attr('y', 0);
+                .attr('y', 0)
+                .remove();
 
             // because of the way the network is created, nodes are created first, and links second,
             // so the lines were on top of the nodes, this just reorders the DOM to put the svg:g on top
