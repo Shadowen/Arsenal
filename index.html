@@ -13,6 +13,7 @@
 </head>
 
 <body>
+    <img src="{{site.baseurl}}/images/bg.png" id="bg" alt="">
     <script>
     function createForce() {
         var self = this;
@@ -491,6 +492,7 @@
             .linkMinimum(0.3);
     }
 
+
     var theSvg = $('body').append($('<svg>')
         .attr('id', 'theSvg'));
 
@@ -599,6 +601,40 @@
                     .update();
             })
         );
+
+    //------------------------------------
+    //----Splash screen
+    //------------------------------------
+    var theWindow = $(window),
+    $bg = $("#bg"),
+    aspectRatio = $bg.width() / $bg.height();
+    function resizeBg() {
+    	if ( (theWindow.width() / theWindow.height()) < aspectRatio ) {
+    	    $bg
+    	    	.removeClass()
+    	    	.addClass('bgheight');
+    	} else {
+    	    $bg
+    	    	.removeClass()
+    	    	.addClass('bgwidth');
+    	}
+    }
+    theWindow.resize(resizeBg).trigger("resize");
+
+    d3.select("#bg").transition()   //Transition the splash screen out
+        .delay(2000)
+        .duration(1000)
+        .style("opacity", 0)
+        .each("end",function() {
+            d3.select(this).
+              remove();
+        });
+    d3.select($('#theSvg')[0])      //Transition the graph in
+        .style("opacity", 0)
+        .transition()
+        .delay(3000)                //SKETCHY AF
+        .duration(1250)
+        .style("opacity", 1)
 
     // Load data
     $.getJSON('{{site.baseurl}}/data/itemCross.json').then(function(data) {
