@@ -417,11 +417,11 @@
                 .attr('height', function(d) {
                     return d.visible ? 2 * nodeSizeScale(d.size) / 1.2 : 0;
                 })
-                .attr('x', function() {
-                    return -d3.select(this).attr('width') / 2;
+                .attr('x', function(d) {
+                    return d.visible ? -nodeSizeScale(d.size) / 1.2 : 0;
                 })
-                .attr('y', function() {
-                    return -d3.select(this).attr('height') / 2;
+                .attr('y', function(d) {
+                    return d.visible ? -nodeSizeScale(d.size) / 1.2 : 0;
                 }).attr('opacity', function(d) {
                     return d.focus ? 1 : unfocusedOpacity;
                 });;
