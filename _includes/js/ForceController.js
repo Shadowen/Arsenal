@@ -1,7 +1,4 @@
----
----
-var myModule = angular.module('myModule', []);
-myModule.controller('ForceController', function($scope, $routeParams) {
+myApp.controller('ForceController', function($scope, $routeParams) {
     function createForce() {
         var self = this;
         self.addNode = function(version, id, name, size) {
@@ -164,8 +161,8 @@ myModule.controller('ForceController', function($scope, $routeParams) {
         var transitionSpeed = 500;
 
         // set up the D3 visualisation in the specified element
-        var w = $('body').width(),
-            h = $('body').height();
+        var w = $('#force-container').width(),
+            h = $('#force-container').height();
 
         var svg = d3.select(document.createElementNS("http://www.w3.org/2000/svg", "svg"))
             .attr('id', 'svg')
@@ -277,6 +274,10 @@ myModule.controller('ForceController', function($scope, $routeParams) {
                 .append("g")
                 .classed("node", true)
                 .classed('send-to-top', true)
+                .append('a')
+                .attr('xlink:href', function(d) {
+                    return '#/item/' + d.id;
+                })
                 .call(force.drag)
                 .on('dblclick', function(d) {
                     focused = !focused;
@@ -469,7 +470,7 @@ myModule.controller('ForceController', function($scope, $routeParams) {
                     return d.visible ? d.focus ? linkStrengthScale(d.value) : linkStrengthScale(d.value) / 2 : 0;
                 })
                 // Set the size to current svg size
-                .size([$('body').width(), $('body').height()])
+                .size([$('#force-container').width(), $('#force-container').height()])
                 .start();
             return self;
         };
@@ -480,7 +481,7 @@ myModule.controller('ForceController', function($scope, $routeParams) {
     }
 
 
-    var theSvg = $('body').append($('<svg>')
+    var theSvg = $('#force-container').append($('<svg>')
         .attr('id', 'theSvg'));
     d3.select('#theSvg')
         .style("opacity", 0);
@@ -535,8 +536,8 @@ myModule.controller('ForceController', function($scope, $routeParams) {
     $(function() {
         $(window).resize(function() {
             $('#theSvg,#svg')
-                .attr('width', $('body').width())
-                .attr('height', $('body').height());
+                .attr('width', $('#force-container').width())
+                .attr('height', $('#force-container').height());
             graph.update();
         });
     });
@@ -607,7 +608,7 @@ myModule.controller('ForceController', function($scope, $routeParams) {
             // Click to skip splash screen
             transitionIn();
         })
-        .appendTo("body");
+        .appendTo("#force-container");
     $(window)
         .resize(function() {
             if (($(this).width() / $(this).height()) < $bg.width() / $bg.height()) {
@@ -633,7 +634,7 @@ myModule.controller('ForceController', function($scope, $routeParams) {
             });
         // Transition the graph in
         d3.select('#theSvg').transition()
-            .delay(1000)
+            .delay(500)
             .duration(1000)
             .style("opacity", 1)
     };
@@ -643,18 +644,18 @@ myModule.controller('ForceController', function($scope, $routeParams) {
     $.getJSON('{{site.baseurl}}/data/itemCross.json').then(function(data) {
         for (var i = 0; i < data.nodes.length; i++) {
             var node = data.nodes[i];
-            if (!node.version || !node.id || !node.name || typeof node.winRate === 'undefined') {
-                console.error('Node', node, 'has a problem!');
-                continue;
-            }
+            // if (!node.version || !node.id || !node.name || typeof node.winRate === 'undefined') {
+            //     console.error('Node', node, 'has a problem!');
+            //     continue;
+            // }
             graph.addNode(node.version, node.id, node.name, node.winRate);
         };
         for (var i = 0; i < data.links.length; i++) {
             var link = data.links[i];
-            if (!link.version || !link.source || !link.target || !link.value) {
-                console.error('Link', link, 'has a problem!');
-                continue;
-            }
+            // if (!link.version || !link.source || !link.target || !link.value) {
+            //     console.error('Link', link, 'has a problem!');
+            //     continue;
+            // }
             graph.addLink(link.version, link.source, link.target, link.value);
         };
         graph.version('5.14')

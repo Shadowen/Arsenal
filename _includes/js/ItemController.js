@@ -1,31 +1,6 @@
----
----
-var myApp = angular.module('myApp', ['ngRoute', 'myModule']);
-myApp.config(['$routeProvider',
-    function($routeProvider) {
-        $routeProvider
-            .when('/', {
-                templateUrl: '{{ site.baseurl }}/partials/force.html',
-                controller: 'ForceController',
-            })
-            .when('/item/:itemId', {
-                templateUrl: '{{ site.baseurl }}/partials/item-detail.html',
-                controller: 'ItemController',
-            })
-            .otherwise({
-                redirectTo: '/'
-            });
-    }
-]);
-
-// Service
-var images = {
-    1: "http://ddragon.leagueoflegends.com/cdn/img/champion/splash/Aatrox_0.jpg"
-}
-
 myApp.controller('ItemController', function($scope, $routeParams) {
+    console.log('item')
     $scope.itemId = $routeParams.itemId;
-    $scope.splashUrl = images[$routeParams.itemId];
 
     var title = 'Buy Time';
     var data = [{
@@ -202,6 +177,6 @@ myApp.controller('ItemController', function($scope, $routeParams) {
         };
         return obj
     }
-    d3.select('body')
+    d3.select('#item-container')
         .call(createHorizontalBarComparison);
 });

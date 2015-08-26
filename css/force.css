@@ -1,10 +1,5 @@
 html,
 body {
-    margin: 0;
-    padding: 0;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
     color: rgba(0, 0, 0, 0.8);
     -webkit-touch-callout: none;
     -webkit-user-select: none;
@@ -12,6 +7,15 @@ body {
     -moz-user-select: none;
     -ms-user-select: none;
     user-select: none;
+}
+
+.full-size {
+    position: absolute;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
 }
 
 body {
