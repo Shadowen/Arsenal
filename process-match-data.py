@@ -1,21 +1,9 @@
-import urllib3
-import certifi
-
-import json
-
 import sqlite3
 
 import traceback
 import math
-import time
 from functools import reduce
-
-from collections import defaultdict
 # Init
-http = urllib3.PoolManager(
-	cert_reqs='CERT_REQUIRED',  # Force certificate check.
-	ca_certs=certifi.where(),  # Path to the Certifi bundle.
-)
 conn = sqlite3.connect('database.db')
 c = conn.cursor()
 
@@ -71,30 +59,6 @@ try:
 						event.type = 'ITEM_SOLD' OR 
 						event.type = 'ITEM_UNDO'
 					ORDER BY event.rowId''')
-		# Item stats
-	c.execute('''CREATE VIEW itemStat AS 
-			SELECT [match].version AS version,
-		       participantItem.shortItemId AS id,
-		       AVG(participantItem.timeBought) AS timeBought,
-		       AVG(participantItem.finalStacks) AS finalStacks,
-		       AVG(participantItem.goldThreshold) AS goldThreshold,
-		       AVG(team.winner) AS winRate
-		  FROM participant
-		       LEFT JOIN
-		       [match] ON participant.matchId = [match].id
-		       LEFT JOIN
-		       team ON [match].id = team.matchId AND 
-		               participant.teamId = team.id
-		       INNER JOIN
-		       participantItem ON [match].id = participantItem.matchId AND 
-		                          participant.id = participantItem.participantId
-		       LEFT JOIN
-		       item ON [match].version = item.version AND 
-		               participantItem.shortItemId = item.id
-		 GROUP BY [match].version,
-		          participantItem.shortItemId;
-		''')
-	print('Item efficiency analysis complete')
 	# Items bought
 	c.execute('''SELECT matchId, id, championId FROM participant;''')
 	for (matchId, participantId, championId) in c.fetchall():
@@ -352,6 +316,58 @@ try:
 	# 		)
 	# ''')
 	# print('Total AP calculated')
+
+	# Item stats
+	c.execute('''CREATE TABLE itemStat (
+			version TEXT,
+			id INTEGER,
+			timesBought INTEGER,
+			avgBuyTime INTEGER,
+			medianBuyTime INTEGER,
+			otherBuyTime INTEGER,
+			finalStacks INTEGER,
+			goldThreshold INTEGER,
+			winRate REAL,
+			FOREIGN KEY (version, id) REFERENCES item(version, id)
+		)''')
+	class median:
+		def __init__(self):
+			self.values = []
+
+		def step(self, value):
+			self.values += [value]
+
+		def finalize(self):
+			mid = (len(self.values) - 1) / 2
+			return (self.values[math.floor(mid)] + self.values[math.ceil(mid)]) / 2
+	conn.create_aggregate('median', 1, median)
+	c.execute('''INSERT INTO itemStat
+		(version, id, timesBought, avgBuyTime, medianBuyTime, otherBuyTime, finalStacks, goldThreshold, winRate)
+			SELECT [match].version,
+			   participantItem.shortItemId,
+			   COUNT(),
+			   AVG(participantItem.timeBought),
+			   MEDIAN(participantItem.timeBought),
+			   MEDIAN(participantItem.timeBought),
+			   AVG(participantItem.finalStacks),
+			   AVG(participantItem.goldThreshold),
+			   AVG(team.winner)
+		  FROM participant
+			   LEFT JOIN
+			   [match] ON participant.matchId = [match].id
+			   LEFT JOIN
+			   team ON [match].id = team.matchId AND 
+					   participant.teamId = team.id
+			   INNER JOIN
+			   participantItem ON [match].id = participantItem.matchId AND 
+								  participant.id = participantItem.participantId
+			   LEFT JOIN
+			   item ON [match].version = item.version AND 
+					   participantItem.shortItemId = item.id
+		 GROUP BY [match].version,
+				  participantItem.shortItemId;
+		''')
+	print('Item efficiency analysis complete')
 
 	# class getBuildType:
 	# 	# 3006: Zerks

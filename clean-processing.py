@@ -37,7 +37,7 @@ try:
 except:
 	traceback.print_exc()
 try:
-	c.execute('''DROP VIEW itemStat''')
+	c.execute('''DROP TABLE itemStat''')
 except:
 	traceback.print_exc()
 try:
