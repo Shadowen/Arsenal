@@ -18,12 +18,14 @@ The website is written in Jekyll for GitHub Pages, entirely in JavaScript powere
 # Build Process
 ## Clone the Repo
 *Prerequisites:* Have [git](https://git-scm.com/) installed and obtain a [Riot API key](developer.riotgames.com).
+
 1. Clone with `git clone`
 2. Paste your Riot API key inside `apikey.txt`.
 3. Run `git update-index --assume-unchanged -- apikey.txt` so you don't accidentally commit your API key.
 
 ## Database Build Process
 *Prerequisites:* Have Python 3.x installed. [`certifi`](https://pypi.python.org/pypi/certifi) is recommended for SSL.
+
 1. Run `clean.py` to delete any previous database.
 2. Run `static-database.py` to pull static data into the database.
 3. Run `create-match-database.py` to initialize the database schema.
@@ -34,6 +36,7 @@ The website is written in Jekyll for GitHub Pages, entirely in JavaScript powere
 
 ## Website Build Process
 *Prerequisites:* Set up [Jekyll for GitHub Pages](https://help.github.com/articles/using-jekyll-with-pages/).
+
 1. Run `bundle exec jekyll serve` to build the website.
 
 # How it works
@@ -52,13 +55,31 @@ A delay is added as necessary to ensure that the API requests obey the rate limi
 
 `process-match-data.py` then does the majority of the work. It crawls through the events timeline for each game, tracking item buys, sells, and undos. It also accounts for item transformations such as *Devourer* -> *Sated Devourer*, or *Manamune* -> *Muramana* (Seriously Riot, you could've documented those events a bit better). To each item, the script attaches additional data that has never before been calculated, such as the time of buy, the player's gold at the time, and even the number of stacks on items including *Mejai's Soulstealer* and *Rod of Ages*.
 
-The process can take a few seconds per game, since data has to be referenced across the player, event timeline, and static item tables. Initially, this process was even slower, but a combination of correctly indexing the tables and moving some more ~~complicated~~awkward calculations from SQL to Python helped speed it up by as much as 100x.
+The process can take a few seconds per game, since data has to be referenced across the player, event timeline, and static item tables. Initially, this process was even slower, but a combination of correctly indexing the tables and moving some more ~~complicated~~ awkward calculations from SQL to Python helped speed it up by as much as 100 times.
 
-In this stage, we also coalase some items together. Following precedent, we choose to count all enchantments as the same as the base item. That means both boot and jungle item enchantments. Transformation items such as *Seraph's Embrace* are also counted as their base item, *Archangel's Staff* in this case. Full list below:
+In this stage, we also coalaese some items together. Following precedent, we choose to count all enchantments as the same as the base item. That means both boot and jungle item enchantments. Transformation items such as *Seraph's Embrace* are also counted as their base item, *Archangel's Staff* in this case. List below:
 
-|    |    |
-|----|----|
-|    |    |
+Counted As | Item
+---|---
+Sightstone (2049) | Ruby Sightstone (2045)
+Seraph's Embrace (3040) | Archangel's Staff (3003)
+Muramana (3043) | Manamune (3004)
+Boots of Swiftness (3009) | Various enchantments
+Mobility Boots (3117) | Various enchantments
+Boots of Lucidity (3158) | Various enchantments
+Mercury Treads (3111)  | Various enchantments
+Berserker's Greaves (3006) | Various enchantments
+Ninja Tabi (3047) | Various enchantments
+Sorcerer's Shoes (3020) | Various enchantments
+Stalker's Blade (3706) | Various enchantments*
+Poacher's Knife (3711) | Various enchantments*
+Skirmisher's Saber (3715) | Various enchantments*
+Ranger's Trailblazer (3713) | Various enchantments*
+Warding Totem (3340) | Upgraded warding trinket (3361), Pink ward trinket (3362)
+Sweeping Lens (3341) | Oracle's Lens (3364)
+Scrying Orb (3363) | Farsight Orb (3342)
+
+* Sated Devourer is counted as Devourer, which is counted as one of the various jungle items.
 
 Finally, we are ready for `export.py`. All this script does is pull data that is already in the database our, filter it for only completed items, and export to a JSON format that the website can understand. This is saved into a file called `itemCross.json`.
 
