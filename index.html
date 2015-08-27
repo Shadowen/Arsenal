@@ -587,10 +587,23 @@
                 .attr('width', $('body').width())
                 .attr('height', $('body').height());
             graph.update();
+            d3.select($('#link-min-slider')
+                    .find('.d3-slider')
+                    .remove().end()[0])
+                .append('div')
+                .call(linkMinSliderFunction);
+
+            d3.select($('#version-slider')
+                    .find('.d3-slider')
+                    .remove().end()[0])
+                .append('div')
+                .call(versionSliderFunction);
         });
     });
+
     // Link minimum slider
     var linkMinSlider = d3.select($('#theSvg')[0]).append('div')
+        .attr('id', 'link-min-slider')
         .style('position', 'absolute')
         .style('width', '70%')
         .style('top', '20px')
@@ -601,20 +614,21 @@
         .style('top', '40px')
         .text('Minimum co-occurance rate')
     var linkMinDisplay = d3.scale.linear().domain([0, 1]).range([0, 1]);
+    var linkMinSliderFunction = d3.slider()
+        .scale(linkMinDisplay)
+        .axis(true)
+        .snap(true)
+        .value(graph.linkMinimum())
+        .on('slide', function(evt, value) {
+            graph
+                .linkMinimum(value)
+                .update();
+        });
     linkMinSlider.append('div')
-        .call(d3.slider()
-            .scale(linkMinDisplay)
-            .axis(true)
-            .snap(true)
-            .value(graph.linkMinimum())
-            .on('slide', function(evt, value) {
-                graph
-                    .linkMinimum(value)
-                    .update();
-            })
-        );
+        .call(linkMinSliderFunction);
     // Version slider
     var versionSlider = d3.select($('#theSvg')[0]).append('div')
+        .attr('id', 'version-slider')
         .style('position', 'absolute')
         .style('width', '20%')
         .style('top', '20px')
@@ -625,18 +639,18 @@
         .style('top', '40px')
         .style('right', '20px')
         .text('Game Version');
+    var versionSliderFunction = d3.slider()
+        .scale(d3.scale.ordinal()
+            .domain([5.11, 5.14])
+            .rangePoints([0, 1], 0.5))
+        .axis(d3.svg.axis())
+        .value(graph.version())
+        .on('slide', function(evt, value) {
+            graph.version('' + value)
+                .update();
+        });
     versionSlider.append('div')
-        .call(d3.slider()
-            .scale(d3.scale.ordinal()
-                .domain([5.11, 5.14])
-                .rangePoints([0, 1], 0.5))
-            .axis(d3.svg.axis())
-            .value(graph.version())
-            .on('slide', function(evt, value) {
-                graph.version('' + value)
-                    .update();
-            })
-        );
+        .call(versionSliderFunction);
 
     // Splash screen
     var $bg = $("<div>")
