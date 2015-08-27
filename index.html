@@ -13,10 +13,12 @@
 </head>
 
 <body>
-    <img src="{{site.baseurl}}/images/bg.png" id="bg" alt="">
     <script>
     function createForce() {
+        // self is the graph object
         var self = this;
+        // Add a node as specified
+        // Must be followed by a call to update() to show changes
         self.addNode = function(version, id, name, size) {
             allNodes.push({
                 version: version,
@@ -26,21 +28,37 @@
                 focus: true,
                 visible: true,
             });
+            // Notify everything to update
+            versionChanged = true;
+            focusChanged = true;
+            linkMinimumChanged = true;
             return self;
         };
-
+        // Remove the specified node
+        // Must be followed by a call to update() to show changes
         self.removeNode = function(version, id) {
-            var i = 0;
-            var n = findNode(version, id);
-            while (i < allLinks.length) {
-                if ((allLinks[i]['source'] == n) || (allLinks[i]['target'] == n)) {
-                    allLinks.splice(i, 1);
-                } else i++;
-            }
-            allNodes.splice(findNodeIndex(version, id), 1);
+            for (var n = 0; n < allNodes.length; i++) {
+                var node = allNodes[n];
+                if (node.id == id && node.version === version) {
+                    allNodes.splice(i, 1);
+                    // Remove all related links
+                    for (var i = 0; i < allLinks.length; i++) {
+                        if ((allLinks[i]['source'] == n) || (allLinks[i]['target'] == n)) {
+                            allLinks.splice(i--, 1);
+                        }
+                    }
+                    // Notify everything to update
+                    versionChanged = true;
+                    focusChanged = true;
+                    linkMinimumChanged = true;
+                    return self;
+                }
+            };
+            // Node not found
             return self;
         };
-
+        // Add a link as specified
+        // Must be followed by a call to update() to show changes
         self.addLink = function(version, source, target, strength) {
             allLinks.push({
                 version: version,
@@ -50,14 +68,19 @@
                 focus: true,
                 visible: true
             });
+            // Notify everything to update
+            versionChanged = true;
+            focusChanged = true;
+            linkMinimumChanged = true;
             return self;
         };
-
+        // Attach the graph itself to a parent element. Parent must be a DOM element
         self.appendTo = function(parent) {
             parent.appendChild(svg[0][0]);
             return self;
-        }
-
+        };
+        // Get or set the version currently displayed
+        // Must be followed by a call to update() to show changes
         self.version = function(v) {
             if (typeof arguments[0] === 'undefined') {
                 return versionValue;
@@ -65,76 +88,22 @@
             versionValue = v;
             versionChanged = true;
             return self;
-        }
-
+        };
+        // Get or set the minimum number of links a node must have to be displayed.
+        // Must be followed by a call to update() to show changes
         self.linkMinimum = function(min) {
-            if (typeof arguments[0] === 'undefined') {
-                return linkMinimumValue;
+                if (typeof arguments[0] === 'undefined') {
+                    return linkMinimumValue;
+                }
+                linkMinimumValue = min;
+                linkMinimumChanged = true;
+                return self;
             }
-            linkMinimumValue = min;
-            return self;
-        }
-
-        var refreshVisible = function() {
-            // Visibility
-            for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
-                var l = allLinks[linkNum];
-                if (l.value < linkMinimumValue) {
-                    l.visible = false;
-                } else {
-                    l.visible = true;
-                }
-            }
-            for (var i = 0; i < allNodes.length; i++) {
-                var n = allNodes[i];
-                // No more links
-                if (!findNodeLinks(n).reduce(function(prev, curr) {
-                        return prev || curr.visible;
-                    }, false)) {
-                    n.visible = false;
-                } else {
-                    n.visible = true;
-                }
-            }
-
-            // Focus
-            if (!focused) {
-                for (var i = 0; i < allNodes.length; i++) {
-                    allNodes[i].focus = true;
-                }
-                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
-                    allLinks[linkNum].focus = true;
-                }
-            } else {
-                // Focus an element
-                for (var i = 0; i < allNodes.length; i++) {
-                    allNodes[i].focus = false;
-                }
-                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
-                    allLinks[linkNum].focus = false;
-                }
-                findNodeLinks(focusedNode, true).forEach(function(l) {
-                    if (l.visible) {
-                        l.focus = true;
-                        l.source.focus = true;
-                        l.target.focus = true;
-                    }
-                });
-            }
-        }
-
+            // Get a node by id
         var findNode = function(version, id) {
             for (var i = 0; i < allNodes.length; i++) {
                 if (allNodes[i].id === id && allNodes[i].version === version) {
                     return allNodes[i];
-                }
-            };
-        };
-
-        var findNodeIndex = function(version, id) {
-            for (var i = 0; i < allNodes.length; i++) {
-                if (allNodes[i].id == id && allNodes[i].version === version) {
-                    return i;
                 }
             };
         };
@@ -149,7 +118,7 @@
                 }
             }
             return null;
-        }
+        };
 
         var findNodeLinks = function(source, bothVersions) {
             var retLinks = [];
@@ -171,7 +140,8 @@
 
         var nodeColor = d3.scale.category20()
             .domain([0, 9999]);;
-        var linkColor = d3.scale.category20c();
+        var linkColor = d3.scale.category20c()
+            .domain([0, 1]);
         var unfocusedOpacity = 0.1;
         var tooltipTextPadding = 10;
         var transitionSpeed = 500;
@@ -180,27 +150,41 @@
         var w = $('body').width(),
             h = $('body').height();
 
+        // The root level SVG element for the force layout
         var svg = d3.select(document.createElementNS("http://www.w3.org/2000/svg", "svg"))
             .attr('id', 'svg')
             .attr("width", w)
-            .attr("height", h);
+            .attr("height", h)
+            .on('click', function() {
+                if (focused) {
+                    focused = false;
+                    focusChanged = true;
+                    update();
+                }
+            });
         var vis = svg
             .append('svg:g');
 
+        // The Force layout from d3.
         var force = d3.layout.force();
 
+        // All nodes ever added
         var allLinks = [];
         var allNodes = [];
 
+        var focusChanged = false;
         var focused = false;
         var focusedNode;
         var versionChanged;
         var versionValue;
+        var linkMinimumChanged;
         var linkMinimumValue;
 
         self.update = function() {
+            // The current version's nodes and links
             var nodes;
             var links;
+            // Update various components if they have changed
             if (versionChanged) {
                 nodes = allNodes.filter(function(n) {
                     return n.version === versionValue;
@@ -227,7 +211,55 @@
                 nodes = force.nodes();
                 links = force.links();
             }
-
+            if (linkMinimumChanged) {
+                for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                    var l = allLinks[linkNum];
+                    if (l.value < linkMinimumValue) {
+                        l.visible = false;
+                    } else {
+                        l.visible = true;
+                    }
+                }
+                for (var i = 0; i < allNodes.length; i++) {
+                    var n = allNodes[i];
+                    // No more links
+                    if (!findNodeLinks(n).reduce(function(prev, curr) {
+                            return prev || curr.visible;
+                        }, false)) {
+                        n.visible = false;
+                    } else {
+                        n.visible = true;
+                    }
+                }
+                linkMinimumChanged = false;
+            }
+            if (focusChanged) {
+                if (!focused) {
+                    for (var i = 0; i < allNodes.length; i++) {
+                        allNodes[i].focus = true;
+                    }
+                    for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                        allLinks[linkNum].focus = true;
+                    }
+                } else {
+                    // Focus an element
+                    for (var i = 0; i < allNodes.length; i++) {
+                        allNodes[i].focus = false;
+                    }
+                    for (var linkNum = 0; linkNum < allLinks.length; linkNum++) {
+                        allLinks[linkNum].focus = false;
+                    }
+                    findNodeLinks(focusedNode, true).forEach(function(l) {
+                        if (l.visible) {
+                            l.focus = true;
+                            l.source.focus = true;
+                            l.target.focus = true;
+                        }
+                    });
+                }
+                focusChanged = false;
+            }
+            // Recalculate some scales
             var linkSizes = allLinks.map(function(l) {
                 return l.value;
             });
@@ -237,9 +269,9 @@
                 .domain([0, largestLink])
                 .range([0, 1]);
             var strokeScale = d3.scale.pow()
-                .exponent(3)
+                .exponent(2)
                 .domain([smallestLink, largestLink])
-                .range([1, 10]);
+                .range([1, 20]);
             var linkDistanceScale = d3.scale.linear()
                 .domain([smallestLink, largestLink])
                 .range([300, 70]);
@@ -249,8 +281,8 @@
                 .range([10, 100]);
             linkColor.domain([smallestLink, largestLink]);
 
-            refreshVisible();
-
+            // Start creating elements via data joins
+            // Create links
             var link = vis.selectAll("line")
                 .data(links, function(d) {
                     return d.source.id + "-" + d.target.id;
@@ -281,7 +313,7 @@
                 .duration(transitionSpeed)
                 .attr('stroke-width', 0)
                 .remove();
-
+            // Create nodes
             var node = vis.selectAll("g.node")
                 .data(nodes, function(d) {
                     return d.id;
@@ -293,13 +325,12 @@
                 .call(force.drag)
                 .on('dblclick', function(d) {
                     focused = !focused;
+                    focusChanged = true;
                     focusedNode = d;
                     update();
                 })
                 .on('mouseenter', function(d) {
-                    if (!d.focus) {
-                        return;
-                    }
+                    // Tooltip create
                     var tooltip = svg.append("g")
                         .classed('tooltip', true)
                         .attr('opacity', 0);
@@ -328,9 +359,7 @@
                         .attr('opacity', 1);
                 })
                 .on('mousemove', function(d) {
-                    if (!d.focus) {
-                        return;
-                    }
+                    // Tooltip follow
                     var node = svg.selectAll('g.tooltip text')
                         .node();
                     if (typeof node === 'undefined') {
@@ -343,22 +372,24 @@
                         .attr("transform", "translate(" + x + ', ' + y + ")");
                 })
                 .on('mouseleave', function(d) {
-                    if (!d.focus) {
-                        return;
-                    }
+                    // Tooltip remove
                     svg.selectAll('g.tooltip')
                         .transition()
                         .attr('opacity', 0)
-                        .remove()
+                        .remove();
                 })
                 .append('g')
+                // Make the nodes "pop" out when hovered
                 .classed('hover-scale', true);
+            // Nodes are unclickable when unfocused
             node
                 .attr('pointer-events', function(d) {
                     return d.focus ? 'all' : 'none';
                 })
             node.exit()
+                // All the transitioning effects are in children, just wait
                 .transition()
+                .duration(transitionSpeed)
                 .remove();
             nodeEnter.append("svg:circle")
                 .attr("id", function(d) {
@@ -386,6 +417,7 @@
                 .duration(transitionSpeed)
                 .attr('r', 0)
                 .remove();
+            // Clipping the item's image to a circle
             nodeEnter.append('defs')
                 .append('clipPath')
                 .attr('id', function(d) {
@@ -425,7 +457,8 @@
                 })
                 .attr('y', function(d) {
                     return d.visible ? -nodeSizeScale(d.size) / 1.2 : 0;
-                }).attr('opacity', function(d) {
+                })
+                .attr('opacity', function(d) {
                     return d.focus ? 1 : unfocusedOpacity;
                 });;
             node.exit().select('image')
@@ -437,6 +470,7 @@
                 .attr('y', 0)
                 .remove();
 
+            // TODO remove this somehow 
             // because of the way the network is created, nodes are created first, and links second,
             // so the lines were on top of the nodes, this just reorders the DOM to put the svg:g on top
             $(".send-to-top").each(function(index) {
@@ -447,6 +481,7 @@
                 this.parentNode.appendChild(this);
             });
 
+            // Place the SVG elements where they're supposed to be
             force.on("tick", function() {
                 node.attr("transform", function(d) {
                     return "translate(" + d.x + "," + d.y + ")";
@@ -492,7 +527,7 @@
             .linkMinimum(0.3);
     }
 
-
+    // Create the root level SVG of the entire page
     var theSvg = $('body').append($('<svg>')
         .attr('id', 'theSvg'));
     d3.select('#theSvg')
@@ -516,7 +551,6 @@
         .append('div')
         .style('dy', '1.2em')
         .text('Item win rate and co-occurance visualizer');
-
     // Info text
     var infoText = d3.select($('#theSvg')[0]).append('div')
         .attr('id', 'info')
@@ -526,8 +560,10 @@
         .style('width', '30%')
         .style('bottom', '20px')
         .style('left', '20px')
-        .html('The size of an item represents its win rate.<br>The lines represent the frequency of items being found together.<br>Double click to focus on an item.');
-
+        .html('The size of an item represents its win rate.<br>' +
+            'The lines represent the frequency of items being found together.<br>' +
+            'Mouse over an item to see more info.<br>' +
+            'Double click to focus on an item.');
     // Legal stuff
     var legalText = d3.select($('#theSvg')[0]).append('div')
         .attr('id', 'legal-info')
@@ -553,7 +589,6 @@
             graph.update();
         });
     });
-
     // Link minimum slider
     var linkMinSlider = d3.select($('#theSvg')[0]).append('div')
         .style('position', 'absolute')
@@ -578,7 +613,6 @@
                     .update();
             })
         );
-
     // Version slider
     var versionSlider = d3.select($('#theSvg')[0]).append('div')
         .style('position', 'absolute')
@@ -604,27 +638,18 @@
             })
         );
 
-    //------------------------------------
-    //----Splash screen
-    //------------------------------------
-    var $bg = $("#bg").on('click', function() {
-        // Click to skip splash screen
-        transitionIn();
-    });
-    $(window)
-        .resize(function() {
-            if (($(this).width() / $(this).height()) < $bg.width() / $bg.height()) {
-                $bg
-                    .removeClass()
-                    .addClass('bgheight');
-            } else {
-                $bg
-                    .removeClass()
-                    .addClass('bgwidth');
-            }
+    // Splash screen
+    var $bg = $("<div>")
+        .attr('id', 'bg')
+        .css('width', '100%')
+        .css('height', '100%')
+        .css('background-size', 'cover')
+        .css('background-image', 'url(\'{{site.baseurl}}/images/bg.png\')')
+        .on('click', function() {
+            // Click to skip splash screen
+            transitionIn();
         })
-        .trigger("resize");
-
+        .prependTo('body');
     var transitionIn = function() {
         // Transition the splash screen out
         d3.select("#bg").transition()
@@ -636,28 +661,20 @@
             });
         // Transition the graph in
         d3.select('#theSvg').transition()
-            .delay(1000)
-            .duration(1000)
+            .duration(1500)
             .style("opacity", 1)
     };
+    // End splash screen after a few seconds if not already
     setTimeout(transitionIn, 2000);
 
     // Load data
     $.getJSON('{{site.baseurl}}/data/itemCross.json').then(function(data) {
         for (var i = 0; i < data.nodes.length; i++) {
             var node = data.nodes[i];
-            if (!node.version || !node.id || !node.name || typeof node.winRate === 'undefined') {
-                console.error('Node', node, 'has a problem!');
-                continue;
-            }
             graph.addNode(node.version, node.id, node.name, node.winRate);
         };
         for (var i = 0; i < data.links.length; i++) {
             var link = data.links[i];
-            if (!link.version || !link.source || !link.target || !link.value) {
-                console.error('Link', link, 'has a problem!');
-                continue;
-            }
             graph.addLink(link.version, link.source, link.target, link.value);
         };
         graph.version('5.14')
