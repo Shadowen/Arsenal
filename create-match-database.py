@@ -76,8 +76,8 @@ try:
 			maxStacks INTEGER,
 			stackAp INTEGER,
 			goldThreshold INTEGER,
-			FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id),
-			FOREIGN KEY (matchId, timeBought) REFERENCES event(matchId, timestamp)
+			buyOrder INTEGER,
+			FOREIGN KEY (matchId, participantId) REFERENCES participant(matchId, id)
 			)''')
 	c.execute('''CREATE TABLE participantMastery (
 			matchId INTEGER,

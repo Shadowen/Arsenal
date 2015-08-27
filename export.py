@@ -16,7 +16,8 @@ try:
 		3146, 3151, 3152, 3153, 3156, 3157, 3158, 3165, 3172, 3174, 3180, 3190, 3222, 3285, 3290, 3401, 3504, 3508, 3512, 3706, 3711, 3713, 3715, 3742, 3800])
 	# Nodes
 	def exportNodes():
-		c.execute('''SELECT itemStat.version, itemStat.id, item.name, itemStat.winRate
+		c.execute('''SELECT itemStat.version, itemStat.id, item.name, itemStat.winRate, itemStat.avgBuyTime, itemStat.goldThreshold, itemStat.buyOrder,
+			itemStat.finalStacks
 			FROM itemStat
 			LEFT JOIN item ON itemStat.version = item.version AND itemStat.id = item.id
 			''')
@@ -27,7 +28,11 @@ try:
 				'version' : node[0],
 				'id' : node[1],
 				'name' : node[2],
-				'winRate': node[3]
+				'winRate': node[3],
+				'avgBuyTime' : node[4],
+				'goldThreshold' : node[5],
+				'buyOrder' : node[6],
+				'finalStacks' : node[7]
 			}
 		return list(map(nodesToDict, filter(nodeFilter, c.fetchall())))
 	# Links
@@ -79,7 +84,7 @@ try:
 
 
 	# Buy times
-	c.execute('''SELECT itemStat.version, itemStat.id, item.name, itemStat.avgBuyTime, itemStat.medianBuyTime, itemStat.otherBuyTime, itemStat.winRate
+	c.execute('''SELECT itemStat.version, itemStat.id, item.name, itemStat.avgBuyTime, itemStat.medianBuyTime, itemStat.winRate
 		FROM itemStat
 		LEFT JOIN item ON itemStat.version = item.version AND itemStat.id = item.id
 		GROUP BY itemStat.id, itemStat.version
@@ -93,8 +98,7 @@ try:
 				'name' : item[2],
 				'avgBuyTime' : item[3],
 				'medianBuyTime' : item[4],
-				'otherBuyTime' : item[5],
-				'winRate' : item[6]
+				'winRate' : item[5]
 			}
 	def itemReduce(prev, curr):
 		if curr['id'] not in prev:

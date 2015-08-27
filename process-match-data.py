@@ -187,10 +187,10 @@ try:
 				return mapping[itemId]
 			return itemId
 
-		for (itemId, timeBought, goldThreshold) in items:
-			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, shortItemId, timeBought, goldThreshold)
-				VALUES (?, ?, ?, ?, ?, ?)''',
-				(matchId, participantId, itemId, shortenItems(itemId), timeBought, goldThreshold))
+		for idx, (itemId, timeBought, goldThreshold) in enumerate(items):
+			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, shortItemId, timeBought, goldThreshold, buyOrder)
+				VALUES (?, ?, ?, ?, ?, ?, ?)''',
+				(matchId, participantId, itemId, shortenItems(itemId), timeBought, goldThreshold, idx))
 	print('Final items determined')
 	# Resolve stacks
 	# RoA
@@ -324,7 +324,7 @@ try:
 			timesBought INTEGER,
 			avgBuyTime INTEGER,
 			medianBuyTime INTEGER,
-			otherBuyTime INTEGER,
+			buyOrder INTEGER,
 			finalStacks INTEGER,
 			goldThreshold INTEGER,
 			winRate REAL,
@@ -342,13 +342,13 @@ try:
 			return (self.values[math.floor(mid)] + self.values[math.ceil(mid)]) / 2
 	conn.create_aggregate('median', 1, median)
 	c.execute('''INSERT INTO itemStat
-		(version, id, timesBought, avgBuyTime, medianBuyTime, otherBuyTime, finalStacks, goldThreshold, winRate)
+		(version, id, timesBought, avgBuyTime, medianBuyTime, buyOrder, finalStacks, goldThreshold, winRate)
 			SELECT [match].version,
 			   participantItem.shortItemId,
 			   COUNT(),
 			   AVG(participantItem.timeBought),
 			   MEDIAN(participantItem.timeBought),
-			   MEDIAN(participantItem.timeBought),
+			   AVG(participantItem.buyOrder),
 			   AVG(participantItem.finalStacks),
 			   AVG(participantItem.goldThreshold),
 			   AVG(team.winner)
