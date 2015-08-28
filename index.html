@@ -499,6 +499,7 @@
         .style("opacity", 0);
 
     // Title
+    /*
     d3.select($('#theSvg')[0]).append('div')
         .attr('id', 'title')
         .style('pointer-events', 'none')
@@ -516,6 +517,7 @@
         .append('div')
         .style('dy', '1.2em')
         .text('Item win rate and co-occurance visualizer');
+        */
 
     // Info text
     var infoText = d3.select($('#theSvg')[0]).append('div')
@@ -531,11 +533,14 @@
     // Legal stuff
     var legalText = d3.select($('#theSvg')[0]).append('div')
         .attr('id', 'legal-info')
+        .style("opacity", 0)
         .style('pointer-events', 'none')
         .style('position', 'absolute')
         .style('width', '38%')
         .style('bottom', '20px')
         .style('right', '20px')
+        .style('font-size', 20)
+        .style('text-align', 'right')        
         .style('font-size', 'smaller')
         .style('text-align', 'right')
         .html('This application isn\'t endorsed by Riot Games and doesn\'t reflect the views or opinions of Riot Games or anyone officially involved in producing or managing League of Legends. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc. League of Legends &copy; Riot Games, Inc.');
@@ -555,7 +560,9 @@
     });
 
     // Link minimum slider
-    var linkMinSlider = d3.select($('#theSvg')[0]).append('div')
+    var linkMinSlider = d3.select($('#theSvg')[0]).append('div')        
+        .attr('id', 'mainSlider')
+        .style("opacity", 0)
         .style('position', 'absolute')
         .style('width', '70%')
         .style('top', '20px')
@@ -580,7 +587,9 @@
         );
 
     // Version slider
-    var versionSlider = d3.select($('#theSvg')[0]).append('div')
+    var versionSlider = d3.select($('#theSvg')[0]).append('div')        
+        .attr('id', 'versionSlider')
+        .style("opacity", 0)
         .style('position', 'absolute')
         .style('width', '20%')
         .style('top', '20px')
@@ -637,6 +646,15 @@
         // Transition the graph in
         d3.select('#theSvg').transition()
             .delay(1000)
+            .duration(1000)
+            .style("opacity", 1)
+
+        d3.select('#mainSlider').transition()
+            .delay(2000)
+            .duration(1000)
+            .style("opacity", 1)
+        d3.select('#versionSlider').transition()
+            .delay(2000)
             .duration(1000)
             .style("opacity", 1)
     };
