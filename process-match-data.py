@@ -9,249 +9,218 @@ c = conn.cursor()
 
 # Some useful views
 try:
-	c.execute('''CREATE VIEW matchParticipant AS
-		SELECT match.*, participant.*
-		FROM participant
-		LEFT JOIN match ON participant.matchId = match.id;''')
-	c.execute('''SELECT matchId,
-		participantId,
-		timestamp,
-		type,
-		itemId,
-		item.name AS itemName
-	FROM event
-		LEFT JOIN
-		[match] ON event.matchId = [match].id
-		LEFT JOIN
-		item ON [match].version = item.version AND 
-				event.itemId = item.id
-	WHERE event.type = "ITEM_PURCHASED" OR 
-		event.type = "ITEM_DESTROYED" OR 
-		event.type = "ITEM_SOLD" OR 
-		event.type = "ITEM_UNDO"
-	ORDER BY timestamp''')
-	c.execute('''CREATE VIEW participantItemStatic AS
-		SELECT matchId,
-				participantId,
-				itemId,
-				name,
-				flatAp
-			FROM participantItem
-				LEFT JOIN
-				[match] ON participantItem.matchId = [match].id
-				LEFT JOIN
-				item ON [match].version = item.version AND 
-						participantItem.itemId = item.id''')
-	c.execute('''CREATE VIEW eventItem AS
-					SELECT event.matchId,
-						event.participantId,
-						event.timestamp,
-						event.type,
-						event.itemId,
-						participantFrame.totalGold
-					FROM event
-						LEFT JOIN
-						participantFrame ON event.matchId = participantFrame.matchId AND 
-											event.frameTimestamp = participantFrame.timestamp AND 
-											event.participantId = participantFrame.participantId
-					WHERE event.type = 'ITEM_PURCHASED' OR 
-						event.type = 'ITEM_DESTROYED' OR 
-						event.type = 'ITEM_SOLD' OR 
-						event.type = 'ITEM_UNDO'
-					ORDER BY event.rowId''')
 	# Items bought
 	c.execute('''SELECT matchId, id, championId FROM participant;''')
 	for (matchId, participantId, championId) in c.fetchall():
-		c.execute('''SELECT type, itemId, timestamp, totalGold
-			FROM eventItem
-			WHERE matchId = ? AND participantId = ?;''', (matchId, participantId))
-		events = c.fetchall()
-		items = []
-		playerActions = []
-		idx = 0
-		if championId == 429:
-			# Kalista's Black Spear
-			items.append((3599, 0, 0))
-		elif championId == 112:
-			# Viktor's Hex Core
-			items.append((3200, 0, 0))
-		while idx < len(events):
-			# Init
-			event = events[idx]
-			eventType = event[0]
-			item = (event[1], event[2], event[3])
-			# Conditions
-			if eventType == 'ITEM_PURCHASED':
-				items.append(item)
-				itemsDestroyed = []
-				idx += 1
-				while idx < len(events):
-					destroyEvent = events[idx]
-					destroyItem = (destroyEvent[1], destroyEvent[2], destroyEvent[3])
-					if destroyItem[1] != item[1] or destroyEvent[0] != 'ITEM_DESTROYED':
-						break
-					items.pop(list(zip(*items))[0].index(destroyItem[0]))
-					itemsDestroyed.append(destroyItem)
+		try:
+			print('Processing items', matchId, participantId)
+			c.execute('''SELECT type, itemId, timestamp, totalGold
+				FROM (SELECT event.matchId,
+							event.participantId,
+							event.timestamp,
+							event.type,
+							event.itemId,
+							participantFrame.totalGold
+						FROM event
+							LEFT JOIN
+							participantFrame ON event.matchId = participantFrame.matchId AND 
+												event.frameTimestamp = participantFrame.timestamp AND 
+												event.participantId = participantFrame.participantId
+						WHERE event.type = 'ITEM_PURCHASED' OR 
+							event.type = 'ITEM_DESTROYED' OR 
+							event.type = 'ITEM_SOLD' OR 
+							event.type = 'ITEM_UNDO'
+						ORDER BY event.rowId)
+				WHERE matchId = ? AND participantId = ?;''', (matchId, participantId))
+			events = c.fetchall()
+			items = []
+			playerActions = []
+			idx = 0
+			if championId == 429:
+				# Kalista's Black Spear
+				items.append((3599, 0, 0))
+			elif championId == 112:
+				# Viktor's Hex Core
+				items.append((3200, 0, 0))
+			while idx < len(events):
+				# Init
+				event = events[idx]
+				eventType = event[0]
+				item = (event[1], event[2], event[3])
+				# Conditions
+				if eventType == 'ITEM_PURCHASED':
+					items.append(item)
+					itemsDestroyed = []
 					idx += 1
-				playerActions.append(('buy', item, itemsDestroyed))
-				continue
-			elif eventType == 'ITEM_SOLD':
-				item = items.pop(list(zip(*items))[0].index(item[0]))
-				playerActions.append(('sell', item))
-			elif eventType == 'ITEM_DESTROYED':
-				# Elixirs TODO can be consumed before buying?
-				if item[0] == 2137 or item[0] == 2138 or item[0] == 2139 or item[0] == 2140:
-					break
-				items.pop(list(zip(*items))[0].index(item[0]))
-				# Archangel -> Seraph
-				if item[0] == 3003:
-					items.append((3040, item[1], item[2]))
-				# Manamune -> Muramana
-				elif item[0] == 3004:
-					items.append((3041, item[1], item[2]))
-				# Devourer -> Sated Devourer
+					while idx < len(events):
+						destroyEvent = events[idx]
+						destroyItem = (destroyEvent[1], destroyEvent[2], destroyEvent[3])
+						if destroyItem[1] != item[1] or destroyEvent[0] != 'ITEM_DESTROYED':
+							break
+						items.pop(list(zip(*items))[0].index(destroyItem[0]))
+						itemsDestroyed.append(destroyItem)
+						idx += 1
+					playerActions.append(('buy', item, itemsDestroyed))
+					continue
+				elif eventType == 'ITEM_SOLD':
+					item = items.pop(list(zip(*items))[0].index(item[0]))
+					playerActions.append(('sell', item))
+				elif eventType == 'ITEM_DESTROYED':
+					# Elixirs TODO can be consumed before buying?
+					if item[0] == 2137 or item[0] == 2138 or item[0] == 2139 or item[0] == 2140:
+						break
+					items.pop(list(zip(*items))[0].index(item[0]))
+					# Archangel -> Seraph
+					if item[0] == 3003:
+						items.append((3040, item[1], item[2]))
+					# Manamune -> Muramana
+					elif item[0] == 3004:
+						items.append((3041, item[1], item[2]))
+					# Devourer -> Sated Devourer
+					# Stalker's Blade
+					elif item[0] == 3710:
+						items.append((3930, item[1], item[2]))
+					# Poacher's Knife
+					elif item[0] == 3722:
+						items.append((3932, item[1], item[2]))
+					# Skirmisher's Sabre
+					elif item[0] == 3718:
+						items.append((3931, item[1], item[2]))
+					# Ranger's Trailblazer
+					elif item[0] == 3726:
+						items.append((3933, item[1], item[2]))
+				elif eventType == 'ITEM_UNDO':
+					action = playerActions.pop()
+					if action[0] == 'buy':
+						# Undo buy
+						items.pop(list(zip(*items))[0].index(action[1][0]))
+						items.extend(action[2])
+					elif action[0] == 'sell':
+						# Undo sell
+						items.append(action[1])
+				# Increment
+				idx += 1
+
+			# Disable error checking for better performance
+			# def collapseStackables(prev, curr):
+			# 	# HPot, MPot, Biscuit, Ward, VWard
+			# 	stackables = [2003, 2004, 2010, 2044, 2043]
+			# 	if curr in prev and curr in stackables:
+			# 		return prev
+			# 	return prev + [curr]
+			# if len(reduce(collapseStackables, map(lambda i: i[0], items), [])) > 7:
+			# 	print('Participant #{} in match {} has too many items!'.format(participantId, matchId))
+			# 	print(list(zip(*items))[0])
+			# 	raise "Error"
+
+			def shortenItems(itemId):
+				mapping = {
+				# Ruby Sightstone -> Sightstone
+				2045 : 2049,
+				# Seraph -> Archangel
+				3040 : 3003, 3048 : 3003, 3007 : 3003,
+				# Muramana -> Manamune
+				3043 : 3004, 3042 : 3004, 3008 : 3004,
+				# Swiftness
+				1306 : 3009, 1308 : 3009, 1035 : 3009, 1307 : 3009, 1309 : 3009, 1336 : 3009, 3280 : 3009, 3284 : 3009, 3281 : 3009, 3283 : 3009, 3282 : 3009, 3280 : 3009,
+				# Mobi
+				1326 : 3117, 1328 : 3117, 1325 : 3117, 1327 : 3117, 1329 : 3117, 1340 : 3117, 3270 : 3117, 3271 : 3117, 3273 : 3117, 3270 : 3117, 3274 : 3117, 3272 : 3117,
+				# Lucidity
+				1331 : 3158, 1333 : 3158, 1330 : 3158, 1332 : 3158, 1334 : 3158, 1341 : 3158, 3275 : 3158, 3276 : 3158, 3278 : 3158, 3279 : 3158, 3277 : 3158, 3275 : 3158,
+				# Mercury Treads
+				1321 : 3111, 1323 : 3111, 1320 : 3111, 1322 : 3111, 1324 : 3111, 1339 : 3111, 3265 : 3111, 3269 : 3111, 3268 : 3111, 3266 : 3111, 3267 : 3111, 3265 : 3111,
+				# Bezerker's
+				1301 : 3006, 1303 : 3006, 1300 : 3006, 1302 : 3006, 1304 : 3006, 1335 : 3006, 3250 : 3006, 3254 : 3006, 3252 : 3006, 3251 : 3006, 3253 : 3006,
+				# Ninja Tabi
+				1316 : 3047, 1318 : 3047, 1315 : 3047, 1317 : 3047, 1319 : 3047, 1338 : 3047, 3260 : 3047, 3261 : 3047, 3263 : 3047, 3262 : 3047, 3060 : 3047, 3264 : 3047,
+				# Sorcs
+				1311 : 3020, 1313 : 3020, 1310 : 3020, 1312 : 3020, 1314 : 3020, 1337 : 3020, 3255 : 3020, 3257 : 3020, 3256 : 3020, 3259 : 3020, 3258 : 3020,
 				# Stalker's Blade
-				elif item[0] == 3710:
-					items.append((3930, item[1], item[2]))
+				3707 : 3706, 3708 : 3706, 3709 : 3706, 3710 : 3706, 3930 : 3706,
 				# Poacher's Knife
-				elif item[0] == 3722:
-					items.append((3932, item[1], item[2]))
+				3719 : 3711, 3720 : 3711, 3721 : 3711, 3722 : 3711, 3932 : 3711,
 				# Skirmisher's Sabre
-				elif item[0] == 3718:
-					items.append((3931, item[1], item[2]))
+				3714 : 3715, 3716 : 3715, 3717 : 3715, 3718 : 3715, 3931 : 3715,
 				# Ranger's Trailblazer
-				elif item[0] == 3726:
-					items.append((3933, item[1], item[2]))
-			elif eventType == 'ITEM_UNDO':
-				action = playerActions.pop()
-				if action[0] == 'buy':
-					# Undo buy
-					items.pop(list(zip(*items))[0].index(action[1][0]))
-					items.extend(action[2])
-				elif action[0] == 'sell':
-					# Undo sell
-					items.append(action[1])
-			# Increment
-			idx += 1
+				3723 : 3713, 3724 : 3713, 3725 : 3713, 3726 : 3713, 3933 : 3713,
+				# Warding Totem
+				3361 : 3340, 3362 : 3340,
+				# Sweeping Lens
+				3364 : 3341,
+				# Scrying Orb
+				3363 : 3342
+				}
+				if itemId in mapping:
+					return mapping[itemId]
+				return itemId
 
-		# Disable error checking for better performance
-		# def collapseStackables(prev, curr):
-		# 	# HPot, MPot, Biscuit, Ward, VWard
-		# 	stackables = [2003, 2004, 2010, 2044, 2043]
-		# 	if curr in prev and curr in stackables:
-		# 		return prev
-		# 	return prev + [curr]
-		# if len(reduce(collapseStackables, map(lambda i: i[0], items), [])) > 7:
-		# 	print('Participant #{} in match {} has too many items!'.format(participantId, matchId))
-		# 	print(list(zip(*items))[0])
-		# 	raise "Error"
-
-		def shortenItems(itemId):
-			mapping = {
-			# Ruby Sightstone -> Sightstone
-			2045 : 2049,
-			# Seraph -> Archangel
-			3040 : 3003, 3048 : 3003, 3007 : 3003,
-			# Muramana -> Manamune
-			3043 : 3004, 3042 : 3004, 3008 : 3004,
-			# Swiftness
-			1306 : 3009, 1308 : 3009, 1035 : 3009, 1307 : 3009, 1309 : 3009, 1336 : 3009, 3280 : 3009, 3284 : 3009, 3281 : 3009, 3283 : 3009, 3282 : 3009, 3280 : 3009,
-			# Mobi
-			1326 : 3117, 1328 : 3117, 1325 : 3117, 1327 : 3117, 1329 : 3117, 1340 : 3117, 3270 : 3117, 3271 : 3117, 3273 : 3117, 3270 : 3117, 3274 : 3117, 3272 : 3117,
-			# Lucidity
-			1331 : 3158, 1333 : 3158, 1330 : 3158, 1332 : 3158, 1334 : 3158, 1341 : 3158, 3275 : 3158, 3276 : 3158, 3278 : 3158, 3279 : 3158, 3277 : 3158, 3275 : 3158,
-			# Mercury Treads
-			1321 : 3111, 1323 : 3111, 1320 : 3111, 1322 : 3111, 1324 : 3111, 1339 : 3111, 3265 : 3111, 3269 : 3111, 3268 : 3111, 3266 : 3111, 3267 : 3111, 3265 : 3111,
-			# Bezerker's
-			1301 : 3006, 1303 : 3006, 1300 : 3006, 1302 : 3006, 1304 : 3006, 1335 : 3006, 3250 : 3006, 3254 : 3006, 3252 : 3006, 3251 : 3006, 3253 : 3006,
-			# Ninja Tabi
-			1316 : 3047, 1318 : 3047, 1315 : 3047, 1317 : 3047, 1319 : 3047, 1338 : 3047, 3260 : 3047, 3261 : 3047, 3263 : 3047, 3262 : 3047, 3060 : 3047, 3264 : 3047,
-			# Sorcs
-			1311 : 3020, 1313 : 3020, 1310 : 3020, 1312 : 3020, 1314 : 3020, 1337 : 3020, 3255 : 3020, 3257 : 3020, 3256 : 3020, 3259 : 3020, 3258 : 3020,
-			# Stalker's Blade
-			3707 : 3706, 3708 : 3706, 3709 : 3706, 3710 : 3706, 3930 : 3706,
-			# Poacher's Knife
-			3719 : 3711, 3720 : 3711, 3721 : 3711, 3722 : 3711, 3932 : 3711,
-			# Skirmisher's Sabre
-			3714 : 3715, 3716 : 3715, 3717 : 3715, 3718 : 3715, 3931 : 3715,
-			# Ranger's Trailblazer
-			3723 : 3713, 3724 : 3713, 3725 : 3713, 3726 : 3713, 3933 : 3713,
-			# Warding Totem
-			3361 : 3340, 3362 : 3340,
-			# Sweeping Lens
-			3364 : 3341,
-			# Scrying Orb
-			3363 : 3342
-			}
-			if itemId in mapping:
-				return mapping[itemId]
-			return itemId
-
-		for idx, (itemId, timeBought, goldThreshold) in enumerate(items):
-			c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, shortItemId, timeBought, goldThreshold, buyOrder)
-				VALUES (?, ?, ?, ?, ?, ?, ?)''',
-				(matchId, participantId, itemId, shortenItems(itemId), timeBought, goldThreshold, idx))
+			for idx, (itemId, timeBought, goldThreshold) in enumerate(items):
+				c.execute('''INSERT INTO participantItem (matchId, participantId, itemId, shortItemId, timeBought, goldThreshold, buyOrder)
+					VALUES (?, ?, ?, ?, ?, ?, ?)''',
+					(matchId, participantId, itemId, shortenItems(itemId), timeBought, goldThreshold, idx))
+		except:
+			traceback.print_exc()
 	print('Final items determined')
 	# Resolve stacks
 	# RoA
-	c.execute('''SELECT matchId, participantId, timeBought
-		FROM participantItem
-		WHERE participantItem.itemId = 3027''')
-	storedMatchId = -1
-	for (matchId, participantId, timeBought) in c.fetchall():
-		# Cache matchDuration to minimize additional queries
-		if matchId != storedMatchId:
-			c.execute('''SELECT duration
-				FROM match
-				WHERE id = ?''', (matchId,))
-			storedMatchId = matchId
-			matchDuration = c.fetchone()[0]
-		# Calculate the final number of stacks
-		finalStacks = min(matchDuration // 60 - timeBought // 1000 // 60, 10)
-		# Update the table
-		c.execute('''UPDATE participantItem
-			SET finalStacks = ?, maxStacks = ?
-			WHERE matchId = ? AND participantId = ? AND itemId = 3027''',
-			(finalStacks, finalStacks, matchId, participantId))
-		# Multiple of the same item bought? Need SQLITE_enable_update_delete_limit
-		# c.execute('''UPDATE participantItem SET finalStacks = ?, maxStacks = ?
-		# 	WHERE matchId = ? AND participantId = ? AND itemId = 3027
-		# 	ORDER BY timeBought
-		# 	LIMIT 1''',
-		# 	(finalStacks, maxStacks, matchId, participantId))
-	print('RoA stacks resolved')
+	# c.execute('''SELECT matchId, participantId, timeBought
+	# 	FROM participantItem
+	# 	WHERE participantItem.itemId = 3027''')
+	# storedMatchId = -1
+	# for (matchId, participantId, timeBought) in c.fetchall():
+	# 	# Cache matchDuration to minimize additional queries
+	# 	if matchId != storedMatchId:
+	# 		c.execute('''SELECT duration
+	# 			FROM match
+	# 			WHERE id = ?''', (matchId,))
+	# 		storedMatchId = matchId
+	# 		matchDuration = c.fetchone()[0]
+	# 	# Calculate the final number of stacks
+	# 	finalStacks = min(matchDuration // 60 - timeBought // 1000 // 60, 10)
+	# 	# Update the table
+	# 	c.execute('''UPDATE participantItem
+	# 		SET finalStacks = ?, maxStacks = ?
+	# 		WHERE matchId = ? AND participantId = ? AND itemId = 3027''',
+	# 		(finalStacks, finalStacks, matchId, participantId))
+	# 	# Multiple of the same item bought? Need SQLITE_enable_update_delete_limit
+	# 	# c.execute('''UPDATE participantItem SET finalStacks = ?, maxStacks = ?
+	# 	# 	WHERE matchId = ? AND participantId = ? AND itemId = 3027
+	# 	# 	ORDER BY timeBought
+	# 	# 	LIMIT 1''',
+	# 	# 	(finalStacks, maxStacks, matchId, participantId))
+	# print('RoA stacks resolved')
 	# Mejais
-	c.execute('''SELECT matchId, participantId, timeBought
-		FROM participantItem
-		WHERE participantItem.itemId = 3041''')
-	for (matchId, participantId, timeBought) in c.fetchall():
-		# Calculate the final number of stacks
-		c.execute('''SELECT event.killerId, event.victimId, assist.participantId
-			FROM event
-			LEFT JOIN assist ON event.matchId = assist.matchId AND event.id = assist.eventId
-			WHERE event.matchId = ? AND event.type = 'CHAMPION_KILL' AND event.timestamp > ? AND
-			(event.killerId = ? OR event.victimId = ? OR assist.participantId = ?)
-			ORDER BY event.rowId''',
-			(matchId, timeBought, participantId, participantId, participantId))
-		stacks = 5
-		maxStacks = stacks
-		for (killer, victim, assistant) in c.fetchall():
-			if participantId == killer:
-				stacks = min(stacks + 2, 20)
-			elif participantId == victim:
-				stacks //= 2
-			elif participantId == assistant:
-				stacks = min(stacks + 1, 20)
-			else:
-				print(matchId, participantId, killer, victim, assitant)
-				raise 'Error'
-			maxStacks = max(stacks, maxStacks)
-		# Update database
-		c.execute('''UPDATE participantItem
-			SET finalStacks = ?, maxStacks = ?
-			WHERE matchId = ? AND participantId = ? AND itemId = 3041''',
-			(stacks, maxStacks, matchId, participantId))
-	print('Stacking items resolved')
+	# c.execute('''SELECT matchId, participantId, timeBought
+	# 	FROM participantItem
+	# 	WHERE participantItem.itemId = 3041''')
+	# for (matchId, participantId, timeBought) in c.fetchall():
+	# 	# Calculate the final number of stacks
+	# 	c.execute('''SELECT event.killerId, event.victimId, assist.participantId
+	# 		FROM event
+	# 		LEFT JOIN assist ON event.matchId = assist.matchId AND event.id = assist.eventId
+	# 		WHERE event.matchId = ? AND event.type = 'CHAMPION_KILL' AND event.timestamp > ? AND
+	# 		(event.killerId = ? OR event.victimId = ? OR assist.participantId = ?)
+	# 		ORDER BY event.rowId''',
+	# 		(matchId, timeBought, participantId, participantId, participantId))
+	# 	stacks = 5
+	# 	maxStacks = stacks
+	# 	for (killer, victim, assistant) in c.fetchall():
+	# 		if participantId == killer:
+	# 			stacks = min(stacks + 2, 20)
+	# 		elif participantId == victim:
+	# 			stacks //= 2
+	# 		elif participantId == assistant:
+	# 			stacks = min(stacks + 1, 20)
+	# 		else:
+	# 			print(matchId, participantId, killer, victim, assitant)
+	# 			raise 'Error'
+	# 		maxStacks = max(stacks, maxStacks)
+	# 	# Update database
+	# 	c.execute('''UPDATE participantItem
+	# 		SET finalStacks = ?, maxStacks = ?
+	# 		WHERE matchId = ? AND participantId = ? AND itemId = 3041''',
+	# 		(stacks, maxStacks, matchId, participantId))
+	# print('Stacking items resolved')
 
 	# Item AP
 	# def stacksToAp(itemId, stacks):

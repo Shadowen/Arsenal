@@ -31,8 +31,8 @@ for matchSet in files:
     requestNum = 1
     for (matchNum, matchId) in enumerate(matchIds):
         ## TODO
-        if matchNum == 100:
-            break
+        # if matchNum == 100:
+        #     break
         try:
             while True:
                 # time.sleep(1)
@@ -64,7 +64,7 @@ for matchSet in files:
                 ###
                 for team in data['teams']:
                     c.execute('''INSERT INTO team (matchId, id, winner) VALUES (?, ?, ?)''', (matchId, team["teamId"], team["winner"]))
-                    for ban in team['bans']:
+                    for ban in team.get('bans', []):
                         c.execute('''INSERT INTO ban (matchId, teamId, championId, pickTurn) VALUES (?, ?, ?, ?)''',
                             (matchId, team['teamId'], ban['championId'], ban['pickTurn']))
                 # Participants
