@@ -47,13 +47,13 @@ This application is a two-step process. First the data is crunched on a local ma
 ## The Database
 We begin in our `master` branch with the scripts `static-database.py` and `create-match-database.py`. They create the structure or *schema* of the database the data will be stored in. Together, they issue `CREATE TABLE` queries through Python 3's `sqlite` library to a database on disk. The final structure of the database is shown below.
 
-![]()
+![database_diagram](https://cloud.githubusercontent.com/assets/8551479/9565717/3768c70e-4eaf-11e5-9d4b-69d4d440f697.jpg)
 
 `static-database.py` and `populate-match-database.py` import Python 3's `urllib3` to make `GET` requests to [Riot's API](https://developer.riotgames.com/api/methods). To ensure the security of the API key, the API key is stored in an external file `apiKey.txt`. This file is then "*[hijacked](http://stackoverflow.com/a/19011529/5195629)*" (`git update-index --assume-unchanged`) from the repository when it is cloned, so it will never be committed. A developer can then insert the API key to be used into this file and it will never leave the local machine.
 
-A delay is added as necessary to ensure that the API requests obey the rate limit. If a `429 Rate Limit Exceeded` error code is received, the script will automatically wait the time specified in the `Retry-After` header. The script will also retry requests as necessary if any fail due to `404` errors.
+A delay is added as necessary to ensure that the API requests obey the rate limit. If a `429 Rate Limit Exceeded` error code is received, the script will automatically wait the time specified in the `Retry-After` header. The script will also retry requests as necessary if any fail due to `404 Not Found` or `503 Service Unavailable` errors.
 
-`process-match-data.py` then does the majority of the work. It crawls through the events timeline for each game, tracking item buys, sells, and undos. It also accounts for item transformations such as *Devourer* -> *Sated Devourer*, or *Manamune* -> *Muramana* (Seriously Riot, you could've documented those events a bit better). To each item, the script attaches additional data that has never before been calculated, such as the time of buy, the player's gold at the time, and even the number of stacks on items including *Mejai's Soulstealer* and *Rod of Ages*.
+`process-match-data.py` then does the majority of the work. It crawls through the events timeline for each game, tracking item buys, sells, and undos. It also accounts for item transformations such as *Devourer* -> *Sated Devourer*, or *Manamune* -> *Muramana* (Seriously Riot, you could've documented those events a bit better). To each item, the script attaches additional data such as the time of buy, the player's gold at the time, and even the number of stacks on items including *Mejai's Soulstealer* and *Rod of Ages*.
 
 The process can take a few seconds per game, since data has to be referenced across the player, event timeline, and static item tables. Initially, this process was even slower, but a combination of correctly indexing the tables and moving some more ~~complicated~~ awkward calculations from SQL to Python helped speed it up by as much as 100 times.
 
