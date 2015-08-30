@@ -1,7 +1,7 @@
 # Arsenal ([live](http://shadowen.github.io/Arsenal/))
 A force-directed graph to help visualize the difference in item win rates and co-occurrences from patch 5.11 to 5.14. 
 
-![Arsenal splash screen](https://cloud.githubusercontent.com/assets/8551479/9522937/72b3a222-4ca5-11e5-8b36-ee592215ea87.png)
+![image](https://cloud.githubusercontent.com/assets/8551479/9565789/caa0d9b8-4eb3-11e5-9450-759923ae3f75.png)
 
 The graph has two basic rules:
 
