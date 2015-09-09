@@ -37,7 +37,7 @@ video.cover {
     min-width: 100%;
     min-height: 100%;
     z-index: -900;
-    background-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(44, 62, 80, 0.55);
     overflow: hidden;
 }
 
