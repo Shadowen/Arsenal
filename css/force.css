@@ -19,7 +19,7 @@ body {
 }
 
 #splash {
-    position:absolute;
+    position: absolute;
 }
 
 video.cover {
@@ -79,5 +79,15 @@ text {
 }
 
 a {
+    color: black;
+    text-decoration: none;
     pointer-events: all;
+}
+
+a:visited {
+    color: DarkSlateGray;
+}
+
+a:hover {
+    text-decoration: underline;
 }

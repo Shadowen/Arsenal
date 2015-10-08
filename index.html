@@ -533,7 +533,8 @@
             'The lines represent the frequency of items being found together.<br>' +
             'Double click to focus on an item.<br>' +
             'Filter the amount of items you see with the slider on the left.<br>' +
-            'Change between game versions with the slider on the right.');
+            'Change between game versions with the slider on the right.<br>' +
+            '<a href="https://github.com/Shadowen/Arsenal/blob/master/README.md">GitHub Documentation</a>');
 
     // Legal stuff
     var legalText = d3.select($('#theSvg')[0]).append('div')
@@ -662,7 +663,6 @@
         d3.select("#logo")
             .transition()
             .duration(1000)
-            //.style('transform', "translate(0%, 0%)")
             .style("right", '170px')
             .style("bottom", '120px')
             .style("width", '300px')
