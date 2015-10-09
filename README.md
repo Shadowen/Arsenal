@@ -1,6 +1,8 @@
 # Arsenal ([live](http://shadowen.github.io/Arsenal/))
 A force-directed graph to help visualize the difference in item win rates and co-occurrences from patch 5.11 to 5.14. 
 
+[Runner-up](https://developer.riotgames.com/discussion/announcements/show/xE4xpdJ6) for [Riot Games API Challenge 2.0](https://developer.riotgames.com/discussion/announcements/show/2lxEyIcE) - AP Item Analysis.
+
 ![image](https://cloud.githubusercontent.com/assets/8551479/10398678/611590ea-6e7c-11e5-8829-8fd0fe2e06c3.png)
 
 The graph has two basic rules:
